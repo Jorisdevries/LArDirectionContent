@@ -77,10 +77,6 @@ install(TARGETS ${PROJECT_NAME} DESTINATION lib COMPONENT Runtime)
 
 # - headers
 install(DIRECTORY ./ DESTINATION include COMPONENT Development FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY ../larpandoracontent DESTINATION include COMPONENT Development FILES_MATCHING PATTERN "*.h")
-
-# - executable
-install(TARGETS lardirectioncontent DESTINATION bin PERMISSIONS OWNER_READ OWNER_WRITE OWNER_EXECUTE GROUP_READ GROUP_EXECUTE WORLD_READ WORLD_EXECUTE)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 # display some variables and write them to cache

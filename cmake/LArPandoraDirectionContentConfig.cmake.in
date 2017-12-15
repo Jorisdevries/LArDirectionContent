@@ -1,0 +1,69 @@
+##############################################################################
+# cmake configuration file for LArPandoraDirectionContent
+#
+# requires:
+#   MacroCheckPackageLibs.cmake for checking package libraries
+#
+# returns following variables:
+#
+#   LArPandoraDirectionContent_FOUND      : set to TRUE if LArPandoraDirectionContent found
+#       if FIND_PACKAGE called with REQUIRED and COMPONENTS arguments
+#       LArPandoraDirectionContent_FOUND is only set to TRUE if ALL components are also found
+#       if REQUIRED is NOT set components may or may not be available
+#
+#   LArPandoraDirectionContent_ROOT       : path to this LArPandoraDirectionContent installation
+#   LArPandoraDirectionContent_VERSION    : package version
+#   LArPandoraDirectionContent_LIBRARIES  : list of LArPandoraDirectionContent libraries (NOT including COMPONENTS)
+#   LArPandoraDirectionContent_INCLUDE_DIRS  : list of paths to be used with INCLUDE_DIRECTORIES
+#   LArPandoraDirectionContent_LIBRARY_DIRS  : list of paths to be used with LINK_DIRECTORIES
+#   LArPandoraDirectionContent_COMPONENT_LIBRARIES      : list of LArPandoraDirectionContent component libraries
+#   LArPandoraDirectionContent_${COMPONENT}_FOUND       : set to TRUE or FALSE for each library
+#   LArPandoraDirectionContent_${COMPONENT}_LIBRARY     : path to individual libraries
+#   LArPandoraDirectionContent_${COMPONENT}_LIB_DEPENDS : individual library dependencies
+#
+# @author Jan Engels, Desy
+##############################################################################
+
+SET( LArPandoraDirectionContent_ROOT "@CMAKE_INSTALL_PREFIX@" )
+SET( LArPandoraDirectionContent_VERSION "@LArPandoraDirectionContent_VERSION@" )
+
+
+# ---------- include dirs -----------------------------------------------------
+# do not store find results in cache
+SET( LArPandoraDirectionContent_INCLUDE_DIRS LArPandoraDirectionContent_INCLUDE_DIRS-NOTFOUND )
+MARK_AS_ADVANCED( LArPandoraDirectionContent_INCLUDE_DIRS )
+
+FIND_PATH( LArPandoraDirectionContent_INCLUDE_DIRS
+	NAMES larpandoracontent/LArCheating/CheatingClusterCreationAlgorithm.h
+	PATHS ${LArPandoraDirectionContent_ROOT} ${LArPandoraDirectionContent_ROOT}/include
+	NO_DEFAULT_PATH
+)
+
+
+
+# ---------- libraries --------------------------------------------------------
+INCLUDE( "@PANDORA_CMAKE_MODULES_PATH@/MacroCheckPackageLibs.cmake" )
+
+# only standard libraries should be passed as arguments to CHECK_PACKAGE_LIBS
+# additional components are set by cmake in variable PKG_FIND_COMPONENTS
+# first argument should be the package name
+CHECK_PACKAGE_LIBS( LArPandoraDirectionContent LArPandoraDirectionContent )
+
+
+
+
+# ---------- libraries dependencies -------------------------------------------
+# this sets LArPandoraDirectionContent_${COMPONENT}_LIB_DEPENDS variables
+INCLUDE( "${LArPandoraDirectionContent_ROOT}/lib/cmake/LArPandoraDirectionContentLibDeps.cmake" )
+ 
+
+
+
+# ---------- final checking ---------------------------------------------------
+INCLUDE( FindPackageHandleStandardArgs )
+# set LARPANDORACONTENTNEW_FOUND to TRUE if all listed variables are TRUE and not empty
+# LArPandoraDirectionContent_COMPONENT_VARIABLES will be set if FIND_PACKAGE is called with REQUIRED argument
+FIND_PACKAGE_HANDLE_STANDARD_ARGS( LArPandoraDirectionContent DEFAULT_MSG LArPandoraDirectionContent_ROOT LArPandoraDirectionContent_INCLUDE_DIRS LArPandoraDirectionContent_LIBRARIES ${LArPandoraDirectionContent_COMPONENT_VARIABLES} )
+
+SET( LArPandoraDirectionContent_FOUND ${LARPANDORACONTENTNEW_FOUND} )
+

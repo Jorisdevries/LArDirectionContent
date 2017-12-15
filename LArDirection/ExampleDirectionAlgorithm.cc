@@ -8,7 +8,7 @@
 
 #include "Pandora/AlgorithmHeaders.h"
 
-#include "lardirectioncontent/LArDirection/ExampleDirectionAlgorithm.h"
+#include "LArDirection/ExampleDirectionAlgorithm.h"
 
 using namespace pandora;
 

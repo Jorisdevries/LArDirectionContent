@@ -12,10 +12,10 @@
 #include "Pandora/AlgorithmTool.h"
 #include "Pandora/Pandora.h"
 
-#include "lardirectioncontent/LArDirection/ExampleDirectionAlgorithm.h"
-#include "lardirectioncontent/LArDirection/TrackDirectionTool.h"
+#include "LArDirection/ExampleDirectionAlgorithm.h"
+#include "LArDirection/TrackDirectionTool.h"
 
-#include "lardirectioncontent/LArDirectionContent.h"
+#include "LArDirectionContent.h"
 
 #define LAR_DIRECTION_ALGORITHM_LIST(d)                                                                                                   \
     d("LArExampleDirection",                  ExampleDirectionAlgorithm)

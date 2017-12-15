@@ -11,7 +11,7 @@
 #include "larpandoracontent/LArHelpers/LArClusterHelper.h"
 #include "larpandoracontent/LArHelpers/LArGeometryHelper.h"
 
-#include "lardirectioncontent/LArDirection/TrackDirectionTool.h"
+#include "LArDirection/TrackDirectionTool.h"
 
 #include "larpandoracontent/LArHelpers/LArMCParticleHelper.h"
 #include "larpandoracontent/LArObjects/LArMCParticle.h"
@@ -37,7 +37,7 @@ std::string treename_tool("lookuptable"), filename_tool("lookuptable.root");
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-#include "lardirectioncontent/LArDirection/ToolMinuitFunctions.h"
+#include "LArDirection/ToolMinuitFunctions.h"
 
 namespace lar_content
 {

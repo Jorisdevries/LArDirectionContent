@@ -1,0 +1,69 @@
+##############################################################################
+# cmake configuration file for LArDirectionContent
+#
+# requires:
+#   MacroCheckPackageLibs.cmake for checking package libraries
+#
+# returns following variables:
+#
+#   LArDirectionContent_FOUND      : set to TRUE if LArDirectionContent found
+#       if FIND_PACKAGE called with REQUIRED and COMPONENTS arguments
+#       LArDirectionContent_FOUND is only set to TRUE if ALL components are also found
+#       if REQUIRED is NOT set components may or may not be available
+#
+#   LArDirectionContent_ROOT       : path to this LArDirectionContent installation
+#   LArDirectionContent_VERSION    : package version
+#   LArDirectionContent_LIBRARIES  : list of LArDirectionContent libraries (NOT including COMPONENTS)
+#   LArDirectionContent_INCLUDE_DIRS  : list of paths to be used with INCLUDE_DIRECTORIES
+#   LArDirectionContent_LIBRARY_DIRS  : list of paths to be used with LINK_DIRECTORIES
+#   LArDirectionContent_COMPONENT_LIBRARIES      : list of LArDirectionContent component libraries
+#   LArDirectionContent_${COMPONENT}_FOUND       : set to TRUE or FALSE for each library
+#   LArDirectionContent_${COMPONENT}_LIBRARY     : path to individual libraries
+#   LArDirectionContent_${COMPONENT}_LIB_DEPENDS : individual library dependencies
+#
+# @author Jan Engels, Desy
+##############################################################################
+
+SET( LArDirectionContent_ROOT "@CMAKE_INSTALL_PREFIX@" )
+SET( LArDirectionContent_VERSION "@LArDirectionContent_VERSION@" )
+
+
+# ---------- include dirs -----------------------------------------------------
+# do not store find results in cache
+SET( LArDirectionContent_INCLUDE_DIRS LArDirectionContent_INCLUDE_DIRS-NOTFOUND )
+MARK_AS_ADVANCED( LArDirectionContent_INCLUDE_DIRS )
+
+FIND_PATH( LArDirectionContent_INCLUDE_DIRS
+	NAMES larpandoracontent/LArDirectionCheating/CheatingClusterCreationAlgorithm.h
+	PATHS ${LArDirectionContent_ROOT} ${LArDirectionContent_ROOT}/include
+	NO_DEFAULT_PATH
+)
+
+
+
+# ---------- libraries --------------------------------------------------------
+INCLUDE( "@PANDORA_CMAKE_MODULES_PATH@/MacroCheckPackageLibs.cmake" )
+
+# only standard libraries should be passed as arguments to CHECK_PACKAGE_LIBS
+# additional components are set by cmake in variable PKG_FIND_COMPONENTS
+# first argument should be the package name
+CHECK_PACKAGE_LIBS( LArDirectionContent LArDirectionContent )
+
+
+
+
+# ---------- libraries dependencies -------------------------------------------
+# this sets LArDirectionContent_${COMPONENT}_LIB_DEPENDS variables
+INCLUDE( "${LArDirectionContent_ROOT}/lib/cmake/LArDirectionContentLibDeps.cmake" )
+ 
+
+
+
+# ---------- final checking ---------------------------------------------------
+INCLUDE( FindPackageHandleStandardArgs )
+# set LARCONTENTNEW_FOUND to TRUE if all listed variables are TRUE and not empty
+# LArDirectionContent_COMPONENT_VARIABLES will be set if FIND_PACKAGE is called with REQUIRED argument
+FIND_PACKAGE_HANDLE_STANDARD_ARGS( LArDirectionContent DEFAULT_MSG LArDirectionContent_ROOT LArDirectionContent_INCLUDE_DIRS LArDirectionContent_LIBRARIES ${LArDirectionContent_COMPONENT_VARIABLES} )
+
+SET( LArDirectionContent_FOUND ${LARCONTENTNEW_FOUND} )
+
