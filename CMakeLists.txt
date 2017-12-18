@@ -64,10 +64,10 @@ endif()
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 # - Collect sources - not ideal because you have to keep running CMake to pick up changes
-file(GLOB_RECURSE LAR_CONTENT_SRCS RELATIVE ${PROJECT_SOURCE_DIR} "*.cc")
+file(GLOB_RECURSE LAR_DIRECTION_CONTENT_SRCS RELATIVE ${PROJECT_SOURCE_DIR} "*.cc")
 
 # - Add library and properties
-add_library(${PROJECT_NAME} SHARED ${LAR_CONTENT_SRCS})
+add_library(${PROJECT_NAME} SHARED ${LAR_DIRECTION_CONTENT_SRCS})
 set_target_properties(${PROJECT_NAME} PROPERTIES VERSION ${${PROJECT_NAME}_VERSION} SOVERSION ${${PROJECT_NAME}_SOVERSION})
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
@@ -77,6 +77,9 @@ install(TARGETS ${PROJECT_NAME} DESTINATION lib COMPONENT Runtime)
 
 # - headers
 install(DIRECTORY ./ DESTINATION include COMPONENT Development FILES_MATCHING PATTERN "*.h")
+
+# - support files
+PANDORA_GENERATE_PACKAGE_CONFIGURATION_FILES(${PROJECT_NAME}Config.cmake ${PROJECT_NAME}ConfigVersion.cmake ${PROJECT_NAME}LibDeps.cmake)
 
 #-------------------------------------------------------------------------------------------------------------------------------------------
 # display some variables and write them to cache
