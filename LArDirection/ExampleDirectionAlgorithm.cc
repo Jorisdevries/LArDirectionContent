@@ -17,19 +17,15 @@ namespace lar_content
 
 StatusCode ExampleDirectionAlgorithm::Run()
 {
-    const ClusterList *pCurrentClusterList(nullptr);
-    PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::GetCurrentList(*this, pCurrentClusterList));
+    const ClusterList *pClusterList(nullptr);
+    PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::GetList(*this, m_clusterListName, pClusterList));
 
-    std::cout << "Test." << std::endl;
+    ClusterVector clusterVector(pClusterList->begin(), pClusterList->end());
 
-    // Access to a named list is demonstrated below. This access only proceeds if a list name has been specified within the
-    // algorithm xml tags. This list name is an optional parameter, rather than mandatory.
-    if (!m_requestedCaloHitListName.empty())
-    {
-        const CaloHitList *pNamedCaloHitList(nullptr);
-        PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::GetList(*this, m_requestedCaloHitListName, pNamedCaloHitList));
-
-        // Use the named calo hit list...
+    for (const Cluster *const pCluster : clusterVector)
+    {    
+        TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->Run(this, pCluster);
+        std::cout << "Probability: " << fitResult.ComputeProbability() << std::endl;
     }
 
     return STATUS_CODE_SUCCESS;
@@ -40,7 +36,14 @@ StatusCode ExampleDirectionAlgorithm::Run()
 StatusCode ExampleDirectionAlgorithm::ReadSettings(const TiXmlHandle xmlHandle)
 {
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
-        "RequestedCaloHitListName", m_requestedCaloHitListName));
+        "ClusterListName", m_clusterListName));
+
+    AlgorithmTool *pAlgorithmTool(nullptr);
+
+    PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, XmlHelper::ProcessAlgorithmTool(*this, xmlHandle, "TrackDirection", pAlgorithmTool));
+
+    if (!(this->m_pTrackDirectionTool = dynamic_cast<TrackDirectionTool *>(pAlgorithmTool)))
+        throw STATUS_CODE_FAILURE;
 
     return STATUS_CODE_SUCCESS;
 }

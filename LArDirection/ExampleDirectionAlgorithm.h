@@ -9,6 +9,7 @@
 #define EXAMPLE_DIRECTION_ALGORITHM_H 1
 
 #include "Pandora/Algorithm.h"
+#include "TrackDirectionTool.h"
 
 namespace lar_content
 {
@@ -32,7 +33,8 @@ private:
     pandora::StatusCode Run();
     pandora::StatusCode ReadSettings(const pandora::TiXmlHandle xmlHandle);
 
-    std::string     m_requestedCaloHitListName;         ///< The requested calo hit list name
+    std::string             m_clusterListName;         ///< The requested calo hit list name
+    TrackDirectionTool      *m_pTrackDirectionTool;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------
