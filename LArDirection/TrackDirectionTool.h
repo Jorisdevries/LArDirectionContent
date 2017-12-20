@@ -413,32 +413,47 @@ public:
         float GetMeanQoverX();
 
         /**
-         *  @brief  Get the address of the vertex
+         *  @brief  Set the address of the vertex
          *
          *  @return the address of the vertex
          */
-        void SetCoordinates(TwoDSlidingFitResult &slidingFitResult);
+        void SetBeginpoint(const pandora::CartesianVector &beginPoint);
+
+        /**
+         *  @brief  Set the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetEndpoint(const pandora::CartesianVector &endPoint);
 
         /**
          *  @brief  Get the address of the vertex
          *
          *  @return the address of the vertex
          */
-        const pandora::CartesianVector GetBeginPoint();
+        const pandora::CartesianVector GetBeginpoint();
 
         /**
          *  @brief  Get the address of the vertex
          *
          *  @return the address of the vertex
          */
-        const pandora::CartesianVector GetEndPoint();
+        const pandora::CartesianVector GetEndpoint();
 
         /**
          *  @brief  Get the address of the vertex
          *
          *  @return the address of the vertex
          */
-        float ComputeProbability();
+        void SetProbability(float &probability);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetProbability();
+
 
     private:
         HitChargeVector     m_hitchargevector;
@@ -449,12 +464,14 @@ public:
         float               m_forwardschisquared;
         float               m_backwardschisquared;
         float               m_probability;
-        float               m_begin_x;
-        float               m_begin_y;
-        float               m_begin_z;
-        float               m_end_x;
-        float               m_end_y;
-        float               m_end_z;
+
+        float               m_beginx;
+        float               m_beginy;
+        float               m_beginz;
+
+        float               m_endx;
+        float               m_endy;
+        float               m_endz;
     };
 
     class JumpObject
@@ -475,13 +492,15 @@ public:
 
     TrackDirectionTool::FitResult Run(pandora::Algorithm *const pAlgorithm, const pandora::Cluster *const pTargetClusterW);
 
-    TrackDirectionTool::FitResult Run(pandora::Algorithm *const pAlgorithm, const pandora::ParticleFlowObject* PFO);
+    void SetLookupTable();
 
     const pandora::Cluster* GetTargetClusterFromPFO(const pandora::ParticleFlowObject* PFO);
 
     void WriteLookupTableToTree(LookupTable &lookupTable);
 
     void ReadLookupTableFromTree(LookupTable &lookupTable);
+
+    void SetEndpoints(FitResult &fitResult, const pandora::Cluster *const pCluster);
 
     void FillHitChargeVector(const pandora::Cluster *const pCluster, HitChargeVector &hitChargeVector);
 
@@ -529,6 +548,8 @@ public:
 
     void FitHitChargeVector(HitChargeVector &hitChargeVector1, HitChargeVector &hitChargeVector2, TrackDirectionTool::FitResult &fitResult1, TrackDirectionTool::FitResult &fitResult2, int numberHitsToConsider=1000000);
 
+    void ComputeProbability(FitResult &fitResult);
+
     void SetGlobalMinuitPreliminaries(const HitChargeVector &hitChargeVector);
 
     void PerformFits(const HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2);
@@ -564,6 +585,9 @@ public:
     int                     m_numberTrackEndHits;
     bool                    m_enableFragmentRemoval;
     bool                    m_enableSplitting;
+    bool                    m_writeTable;
+
+    std::string             m_fileName;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -918,53 +942,50 @@ inline float TrackDirectionTool::FitResult::GetMeanQoverX()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::FitResult::SetCoordinates(TwoDSlidingFitResult &slidingFitResult)
+inline void TrackDirectionTool::FitResult::SetBeginpoint(const pandora::CartesianVector &beginPoint)
 {
-    const pandora::CartesianVector minLayerPosition(slidingFitResult.GetGlobalMinLayerPosition());
-    const pandora::CartesianVector maxLayerPosition(slidingFitResult.GetGlobalMaxLayerPosition());
-
-    m_begin_x = minLayerPosition.GetX(); 
-    m_begin_y = minLayerPosition.GetY(); 
-    m_begin_z = minLayerPosition.GetZ(); 
-
-    m_end_x = maxLayerPosition.GetX(); 
-    m_end_y = maxLayerPosition.GetY(); 
-    m_end_z = maxLayerPosition.GetZ(); 
+    m_beginx = beginPoint.GetX();
+    m_beginy = beginPoint.GetY();
+    m_beginz = beginPoint.GetZ();
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetBeginPoint()
+inline void TrackDirectionTool::FitResult::SetEndpoint(const pandora::CartesianVector &endPoint)
 {
-    const pandora::CartesianVector beginPoint(m_begin_x, m_begin_y, m_begin_z);
+    m_endx = endPoint.GetX();
+    m_endy = endPoint.GetY();
+    m_endz = endPoint.GetZ();
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetBeginpoint()
+{
+    const pandora::CartesianVector beginPoint(m_beginx, m_beginy, m_beginz);
     return beginPoint;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetEndPoint()
+inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetEndpoint()
 {
-    const pandora::CartesianVector endPoint(m_end_x, m_end_y, m_end_z);
+    const pandora::CartesianVector endPoint(m_endx, m_endy, m_endz);
     return endPoint;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::ComputeProbability()
+inline void TrackDirectionTool::FitResult::SetProbability(float &probability)
 {
-    TFile *f = new TFile("probability.root"); 
-
-    TH1F* forwardsDeltaChiSquared = (TH1F*)f->Get("forwardsDeltaChiSquared"); 
-    TH1F* backwardsDeltaChiSquared = (TH1F*)f->Get("backwardsDeltaChiSquared"); 
-
-    float forwardsBinEntry = forwardsDeltaChiSquared->GetBinContent(forwardsDeltaChiSquared->GetBin(m_forwardschisquared/m_nhits));
-    float backwardsBinEntry = backwardsDeltaChiSquared->GetBinContent(backwardsDeltaChiSquared->GetBin(m_backwardschisquared/m_nhits));
-    float probability(forwardsBinEntry/(forwardsBinEntry + backwardsBinEntry));
-
-    f->Close();
-
     m_probability = probability;
-    return probability; 
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::FitResult::GetProbability()
+{
+    return m_probability;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

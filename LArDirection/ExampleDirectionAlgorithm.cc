@@ -9,6 +9,7 @@
 #include "Pandora/AlgorithmHeaders.h"
 
 #include "LArDirection/ExampleDirectionAlgorithm.h"
+#include "larpandoracontent/LArHelpers/LArClusterHelper.h"
 
 using namespace pandora;
 
@@ -24,8 +25,12 @@ StatusCode ExampleDirectionAlgorithm::Run()
 
     for (const Cluster *const pCluster : clusterVector)
     {    
-        TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->Run(this, pCluster);
-        std::cout << "Probability: " << fitResult.ComputeProbability() << std::endl;
+        if (LArClusterHelper::GetClusterHitType(pCluster) == TPC_VIEW_W)
+        {
+            TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->Run(this, pCluster);
+            std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
+            std::cout << "Vertex x coordinate: " << fitResult.GetBeginpoint().GetX() << std::endl;
+        }
     }
 
     return STATUS_CODE_SUCCESS;

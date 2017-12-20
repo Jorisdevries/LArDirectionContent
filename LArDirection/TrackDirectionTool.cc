@@ -23,17 +23,17 @@ using namespace pandora;
 //----------------------------------------------------------------------------------------------------------------------------------
 
 //nasty global parameters necessary for TMinuit
-lar_content::TrackDirectionTool::HitChargeVector* pMinuitVector_tool = new lar_content::TrackDirectionTool::HitChargeVector;
+lar_content::TrackDirectionTool::HitChargeVector* pMinuitVector = new lar_content::TrackDirectionTool::HitChargeVector;
 
-float globalTotalCharge_tool(0.f);
-float globalTrackLength_tool(0.f);
-float globalTotalHitWidth_tool(0.f);
+float globalTotalCharge(0.f);
+float globalTrackLength(0.f);
+float globalTotalHitWidth(0.f);
 
-double globalBinWidth_tool(0.1);
-double globalInitialEnergy_tool(2000.0);
+double globalBinWidth(0.1);
+double globalInitialEnergy(2000.0);
 
-lar_content::TrackDirectionTool::LookupTable globalMuonLookupTable_tool(globalInitialEnergy_tool, globalBinWidth_tool);
-std::string treename_tool("lookuptable"), filename_tool("lookuptable.root");
+lar_content::TrackDirectionTool::LookupTable globalMuonLookupTable(globalInitialEnergy, globalBinWidth);
+std::string treename("lookuptable"), filename("lookuptable.root");
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
@@ -48,7 +48,9 @@ TrackDirectionTool::TrackDirectionTool() :
     m_minClusterLengthSquared(30.f * 30.f),
     m_numberTrackEndHits(100000),
     m_enableFragmentRemoval(false),
-    m_enableSplitting(false)
+    m_enableSplitting(false),
+    m_writeTable(false),
+    m_fileName("probability.root")
 {
 }
 
@@ -56,7 +58,7 @@ TrackDirectionTool::TrackDirectionTool() :
 
 TrackDirectionTool::~TrackDirectionTool()
 {
-    PANDORA_MONITORING_API(SaveTree(this->GetPandora(), treename_tool.c_str(), filename_tool.c_str(), "UPDATE"));
+    PANDORA_MONITORING_API(SaveTree(this->GetPandora(), treename.c_str(), filename.c_str(), "UPDATE"));
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -66,11 +68,13 @@ TrackDirectionTool::FitResult TrackDirectionTool::Run(pandora::Algorithm *const 
     if (PandoraContentApi::GetSettings(*pAlgorithm)->ShouldDisplayAlgorithmInfo())
        std::cout << "----> Running Algorithm Tool: " << this->GetInstanceName() << ", " << this->GetType() << std::endl;
 
-       std::cout << "RUNNING TOOL" << std::endl;
+    if (LArClusterHelper::GetClusterHitType(pTargetClusterW) != TPC_VIEW_W)
+    {
+        std::cout << "ERROR: cluster is not in the W view!" << std::endl;
+        throw StatusCodeException(STATUS_CODE_FAILURE);
+    }
 
-    //FillLookupTable_Tool(globalMuonLookupTable_tool, 105.7);
-    this->WriteLookupTableToTree(globalMuonLookupTable_tool);
-    this->ReadLookupTableFromTree(globalMuonLookupTable_tool);
+    this->SetLookupTable();
 
     try
     {
@@ -78,53 +82,39 @@ TrackDirectionTool::FitResult TrackDirectionTool::Run(pandora::Algorithm *const 
 
         this->AddToSlidingFitCache(pTargetClusterW);
         this->GetCalorimetricDirection(pTargetClusterW, finalFitResult);
+        this->SetEndpoints(finalFitResult, pTargetClusterW);
 
         return finalFitResult;
+        this->TidyUp();
     }
     catch (StatusCodeException &statusCodeException)
     {
         this->TidyUp();
         throw statusCodeException;
     }
-
-    this->TidyUp();
-
-    //return finalFitResult;
-    //return STATUS_CODE_SUCCESS;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-TrackDirectionTool::FitResult TrackDirectionTool::Run(pandora::Algorithm *const pAlgorithm, const ParticleFlowObject* PFO)
+void TrackDirectionTool::SetLookupTable()
 {
-    if (PandoraContentApi::GetSettings(*pAlgorithm)->ShouldDisplayAlgorithmInfo())
-       std::cout << "----> Running Algorithm Tool: " << this->GetInstanceName() << ", " << this->GetType() << std::endl;
+    ifstream inputFile(filename);
 
-    //FillLookupTable_Tool(globalMuonLookupTable_tool, 105.7);
-    this->WriteLookupTableToTree(globalMuonLookupTable_tool);
-    this->ReadLookupTableFromTree(globalMuonLookupTable_tool);
-
-    const Cluster *const pTargetClusterW = this->GetTargetClusterFromPFO(PFO);
-
-    try
+    if (inputFile) 
+        this->ReadLookupTableFromTree(globalMuonLookupTable);
+    else
     {
-        FitResult finalFitResult;
-
-        this->AddToSlidingFitCache(pTargetClusterW);
-        this->GetCalorimetricDirection(pTargetClusterW, finalFitResult);
-
-        return finalFitResult;
-    }
-    catch (StatusCodeException &statusCodeException)
-    {
-        this->TidyUp();
-        throw statusCodeException;
+        std::cout << "WARNING: filling lookup table because lookuptable.root was not found. To create it, include <WriteTable>true</WriteTable> to the Pandora settings XML file." << std::endl;
+        FillLookupTable_Tool(globalMuonLookupTable, 105.7);
     }
 
-    this->TidyUp();
-
-    //return finalFitResult;
-    //return STATUS_CODE_SUCCESS;
+    if (!inputFile && m_writeTable)
+        this->WriteLookupTableToTree(globalMuonLookupTable);
+    else
+    {
+        FillLookupTable_Tool(globalMuonLookupTable, 105.7);
+        this->WriteLookupTableToTree(globalMuonLookupTable);
+    }
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -162,22 +152,22 @@ void TrackDirectionTool::WriteLookupTableToTree(LookupTable &lookupTable)
         reverseMapVector2.push_back(element.second);
     }
 
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "mapVector1", &mapVector1));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "mapVector2", &mapVector2));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "reverseMapVector1", &reverseMapVector1));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "reverseMapVector2", &reverseMapVector2));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "binWidth", lookupTable.GetBinWidth()));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "initialEnergy", lookupTable.GetInitialEnergy()));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename_tool.c_str(), "maxRange", lookupTable.GetMaxRange()));
-    PANDORA_MONITORING_API(FillTree(this->GetPandora(), treename_tool.c_str()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "mapVector1", &mapVector1));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "mapVector2", &mapVector2));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "reverseMapVector1", &reverseMapVector1));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "reverseMapVector2", &reverseMapVector2));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "binWidth", lookupTable.GetBinWidth()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "initialEnergy", lookupTable.GetInitialEnergy()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "maxRange", lookupTable.GetMaxRange()));
+    PANDORA_MONITORING_API(FillTree(this->GetPandora(), treename.c_str()));
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
 void TrackDirectionTool::ReadLookupTableFromTree(LookupTable &lookupTable)
 {
-    TFile *f = TFile::Open(filename_tool.c_str());
-    TTree *t1 = (TTree*)f->Get(treename_tool.c_str());
+    TFile *f = TFile::Open(filename.c_str());
+    TTree *t1 = (TTree*)f->Get(treename.c_str());
 
     std::vector<int> mapVector1, reverseMapVector2;
     std::vector<double> mapVector2, reverseMapVector1;
@@ -234,6 +224,24 @@ void TrackDirectionTool::ReadLookupTableFromTree(LookupTable &lookupTable)
     lookupTable.SetBinWidth(binWidth);
     lookupTable.SetInitialEnergy(initialEnergy);
     lookupTable.SetMaxRange(maxRange);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+void TrackDirectionTool::SetEndpoints(FitResult &fitResult, const Cluster *const pCluster)
+{
+    CartesianVector lowZVector(0.f, 0.f, 0.f), highZVector(0.f, 0.f, 0.f);
+    LArClusterHelper::GetExtremalCoordinates(pCluster, lowZVector, highZVector);
+
+    fitResult.SetBeginpoint(lowZVector);
+    fitResult.SetEndpoint(highZVector);
+
+    //const TwoDSlidingFitResult &slidingFitResult(this->GetCachedSlidingFitResult(pCluster));
+    //const pandora::CartesianVector minLayerPosition(slidingFitResult.GetGlobalMinLayerPosition());
+    //const pandora::CartesianVector maxLayerPosition(slidingFitResult.GetGlobalMaxLayerPosition());
+
+    //fitResult.SetBeginpoint(minLayerPosition);
+    //fitResult.SetEndpoint(maxLayerPosition);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1129,6 +1137,8 @@ void TrackDirectionTool::FitHitChargeVector(const HitChargeVector &hitChargeVect
     std::sort(backwardsFitPoints.begin(), backwardsFitPoints.end(), SortHitChargeVectorByRL);
 
     FitResult finalFitResult(thisHitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHits, mean_dEdx, particleForwardsChiSquared, particleBackwardsChiSquared);
+    this->ComputeProbability(finalFitResult);
+
     fitResult = finalFitResult;
 }
 
@@ -1142,20 +1152,94 @@ void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector1, H
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
+void TrackDirectionTool::ComputeProbability(FitResult &fitResult)
+{
+    float forwardsChiSquared(fitResult.GetForwardsChiSquared()), backwardsChiSquared(fitResult.GetBackwardsChiSquared()), nHits(fitResult.GetNHits());
+    float deltaChiSquared((forwardsChiSquared - backwardsChiSquared)/nHits);
+
+    std::string fileName(m_fileName.c_str());
+    ifstream inputFile(fileName);
+
+    if (deltaChiSquared < -15.0 || deltaChiSquared > 15.0)
+    {
+        float probability(0.5);
+        fitResult.SetProbability(probability);
+        return;
+    }
+
+    if (inputFile)
+    {
+        TFile *f = new TFile(m_fileName.c_str());
+
+        TH1F* forwardsDeltaChiSquared = (TH1F*)f->Get("forwardsDeltaChiSquared"); 
+        TH1F* backwardsDeltaChiSquared = (TH1F*)f->Get("backwardsDeltaChiSquared"); 
+
+        float forwardsBinEntry = forwardsDeltaChiSquared->GetBinContent(forwardsDeltaChiSquared->GetBin(forwardsChiSquared/nHits));
+        float backwardsBinEntry = backwardsDeltaChiSquared->GetBinContent(backwardsDeltaChiSquared->GetBin(backwardsChiSquared/nHits));
+        float probability(forwardsBinEntry/(forwardsBinEntry + backwardsBinEntry));
+
+        //TO DO: OUT OF RANGE PROBABILITIES
+
+        fitResult.SetProbability(probability);
+        f->Close();
+    }
+    else
+    {
+        std::cout << "WARNING: using pre-defined probability values because probability.root cannot be found. This is almost certainly the wrong thing to do. Define a probability filename by including <FileName>filename.root</FileName> in the Pandora XML settings file." << std::endl;
+
+        //std::cout << "ERROR: probability .root file not found. Example: <FileName>probability.root</FileName>" << std::endl;
+        //throw StatusCodeException(STATUS_CODE_FAILURE);
+        
+        std::map<float, int> deltaChiSquaredToBinMap = {
+        {-15.0, 1}, {-14.625, 2}, {-14.25, 3}, {-13.875, 4}, {-13.5, 5}, {-13.125, 6}, {-12.75, 7}, {-12.375, 8}, {-12.0, 9}, {-11.625, 10},
+        {-11.25, 11}, {-10.875, 12}, {-10.5, 13}, {-10.125, 14}, {-9.75, 15}, {-9.375, 16}, {-9.0, 17}, {-8.625, 18}, {-8.25, 19}, {-7.875, 20},
+        {-7.5, 21}, {-7.125, 22}, {-6.75, 23}, {-6.375, 24}, {-6.0, 25}, {-5.625, 26}, {-5.25, 27}, {-4.875, 28}, {-4.5, 29}, {-4.125, 30},
+        {-3.75, 31}, {-3.375, 33}, {-3.0, 33}, {-2.625, 34}, {-2.25, 35}, {-1.875, 36}, {-1.5, 37}, {-1.125, 38}, {-0.75, 39}, {-0.375, 40},
+        {0.0, 41}, {0.375, 42}, {0.75, 43}, {1.125, 44}, {1.5, 45}, {1.875, 46}, {2.25, 47}, {2.625, 48}, {3.0, 49}, {3.375, 50},
+        {3.75, 51}, {4.125, 52}, {4.5, 53}, {4.875, 55}, {5.25, 55}, {5.625, 56}, {6.0, 57}, {6.375, 58}, {6.75, 59}, {7.125, 60},
+        {7.5, 61}, {7.875, 62}, {8.25, 63}, {8.625, 66}, {9.0, 66}, {9.375, 66}, {9.75, 67}, {10.125, 68}, {10.5, 69}, {10.875, 70},
+        {11.25, 71}, {11.625, 72}, {12.0, 73}, {12.375, 77}, {12.75, 77}, {13.125, 77}, {13.5, 77}, {13.875, 78}, {14.25, 79}, {14.625, 80}
+        };
+
+        std::map<int, float> binToProbabilityMap = {
+        {1, 0.396614}, {2, 0.396614}, {3, 0.567965}, {4, 0.677773}, {5, 0.630863}, {6, 0.567965}, {7, 0.66352}, {8, 0.612035}, {9, 0.66352}, {10, 0.773655},
+        {11, 0.743075}, {12, 0.812674}, {13, 0.858101}, {14, 0.829472}, {15, 0.84969}, {16, 0.829472}, {17, 0.895234}, {18, 0.905632}, {19, 0.920437}, {20, 0.931227},
+        {21, 0.940389}, {22, 0.945513}, {23, 0.958795}, {24, 0.961112}, {25, 0.965044}, {26, 0.969887}, {27, 0.975667}, {28, 0.981012}, {29, 0.982457}, {30, 0.983119},
+        {31, 0.98561}, {32, 0.98807}, {33, 0.989574}, {34, 0.989973}, {35, 0.98897}, {36, 0.944622}, {37, 0.861042}, {38, 0.81822}, {39, 0.78381}, {40, 0.53081},
+        {41, 0.31489}, {42, 0.175161}, {44, 0.157666}, {44, 0.081415}, {45, 0.0977991}, {46, 0.0102574}, {47, 0.0107648}, {48, 0.0078804}, {49, 0.00898676}, {50, 0.0112083},
+        {51, 0.0108723}, {52, 0.0100676}, {53, 0.0100676}, {54, 0.0113249}, {55, 0.0124953}, {56, 0.0115656}, {57, 0.0124953}, {58, 0.0146878}, {59, 0.0153076}, {60, 0.0208913},
+        {61, 0.0217255}, {62, 0.0293406}, {63, 0.0319228}, {64, 0.0271449}, {65, 0.0387419}, {66, 0.0492657}, {67, 0.0676391}, {68, 0.0471319}, {69, 0.041712}, {70, 0.0981396},
+        {71, 0.107868}, {72, 0.0831429}, {73, 0.178738}, {74, 0.119737}, {75, 0.107868}, {76, 0.178738}, {77, 0.134541}, {78, 0.521117}, {79, 0.266179}, {80, 0.266179}
+        };
+
+        std::map<float, int>::iterator binIter = deltaChiSquaredToBinMap.lower_bound(deltaChiSquared);
+        if(binIter != deltaChiSquaredToBinMap.begin()) {--binIter;}
+        int bin((*binIter).second);
+
+        std::map<int, float>::iterator probabilityIter = binToProbabilityMap.lower_bound(bin);
+        if(probabilityIter != binToProbabilityMap.begin()) {--probabilityIter;}
+        float probability((*probabilityIter).second);
+
+        fitResult.SetProbability(probability);
+    }
+}
+
+//---------------------------------------------------------------------------------------------------------------------------------
+
 void TrackDirectionTool::SetGlobalMinuitPreliminaries(const HitChargeVector &hitChargeVector)
 {
     this->ClearGlobalVariables();
 
     for (const HitCharge &hitCharge : hitChargeVector)
-        pMinuitVector_tool->push_back(hitCharge);
+        pMinuitVector->push_back(hitCharge);
 
-    for (const HitCharge &hitCharge : *pMinuitVector_tool)
+    for (const HitCharge &hitCharge : *pMinuitVector)
     {
-        globalTotalHitWidth_tool += hitCharge.GetHitWidth();
-        globalTotalCharge_tool += hitCharge.GetCharge();
+        globalTotalHitWidth += hitCharge.GetHitWidth();
+        globalTotalCharge += hitCharge.GetCharge();
     }
 
-    this->GetTrackLength(hitChargeVector, globalTrackLength_tool);
+    this->GetTrackLength(hitChargeVector, globalTrackLength);
 }
 
 //---------------------------------------------------------------------------------------------------------------------------------
@@ -1167,8 +1251,8 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
     //---------------------------------------------------------------------------------------------------
     //Forwards Fit
 
-    double particleMass(105.7), maxScale(globalMuonLookupTable_tool.GetMaxRange()/globalTrackLength_tool);
-    LookupTable lookupTable = globalMuonLookupTable_tool;
+    double particleMass(105.7), maxScale(globalMuonLookupTable.GetMaxRange()/globalTrackLength);
+    LookupTable lookupTable = globalMuonLookupTable;
 
     const int nParameters = 3;
     const std::string parName[nParameters]   = {"ENDENERGY", "SCALE", "EXTRA"};
@@ -1231,25 +1315,25 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
 
     //--------------------------------------------------------------------------
 
-    double f_Ee(outpar[0]), f_L(outpar[1] * globalTrackLength_tool);
+    double f_Ee(outpar[0]), f_L(outpar[1] * globalTrackLength);
     double f_Le(GetLengthfromEnergy_Tool(lookupTable, f_Ee));
     double f_Ls = f_Le - f_L;
 
     double f_Es = GetEnergyfromLength_Tool(lookupTable, f_Ls);
     double f_deltaE = f_Es - f_Ee;
 
-    double f_alpha = f_deltaE/globalTotalCharge_tool;
-    double f_beta = f_L/globalTotalHitWidth_tool;
+    double f_alpha = f_deltaE/globalTotalCharge;
+    double f_beta = f_L/globalTotalHitWidth;
 
-    double b_Ee(outpar2[0]), b_L(outpar2[1] * globalTrackLength_tool);
+    double b_Ee(outpar2[0]), b_L(outpar2[1] * globalTrackLength);
     double b_Le(GetLengthfromEnergy_Tool(lookupTable, b_Ee));
     double b_Ls = b_Le - b_L;
 
     double b_Es = GetEnergyfromLength_Tool(lookupTable, b_Ls);
     double b_deltaE = b_Es - b_Ee;
 
-    double b_alpha = b_deltaE/globalTotalCharge_tool;
-    double b_beta = b_L/globalTotalHitWidth_tool;
+    double b_alpha = b_deltaE/globalTotalCharge;
+    double b_beta = b_L/globalTotalHitWidth;
 
     //--------------------------------------------------------------------------
 
@@ -1268,7 +1352,7 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
         double f_E_i = GetEnergyfromLength_Tool(lookupTable, f_L_i);
         double f_dEdx_2D = outpar[2] * (f_beta/f_alpha) * BetheBloch_Tool(f_E_i, particleMass);
 
-        double b_L_i = b_Ls + (outpar2[1] * (globalTrackLength_tool - hitCharge.GetLongitudinalPosition()));
+        double b_L_i = b_Ls + (outpar2[1] * (globalTrackLength - hitCharge.GetLongitudinalPosition()));
         double b_E_i = GetEnergyfromLength_Tool(lookupTable, b_L_i);
         double b_dEdx_2D = outpar2[2] * (b_beta/b_alpha) * BetheBloch_Tool(b_E_i, particleMass);
 
@@ -1290,7 +1374,7 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
         float forwardsHitChisquared((forwardsDelta * forwardsDelta)/(f_sigma * f_sigma));
         float backwardsHitChisquared((backwardsDelta * backwardsDelta)/(b_sigma * b_sigma));
 
-        if (!((pMinuitVector_tool->size() >= 2 * numberHitsToConsider) && vectorPosition > numberHitsToConsider && vectorPosition < pMinuitVector_tool->size() - numberHitsToConsider))
+        if (!((pMinuitVector->size() >= 2 * numberHitsToConsider) && vectorPosition > numberHitsToConsider && vectorPosition < pMinuitVector->size() - numberHitsToConsider))
         {
             forwardsChiSquared += forwardsHitChisquared;
             backwardsChiSquared += backwardsHitChisquared;
@@ -1411,21 +1495,21 @@ void TrackDirectionTool::TidyUp()
 {
     m_slidingFitResultMap.clear();
 
-    globalTrackLength_tool = (0.f);
-    globalTotalHitWidth_tool = (0.f);
+    globalTrackLength = (0.f);
+    globalTotalHitWidth = (0.f);
 
-    globalBinWidth_tool = (0.1);
-    globalInitialEnergy_tool = (2000.0);
+    globalBinWidth = (0.1);
+    globalInitialEnergy = (2000.0);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
 void TrackDirectionTool::ClearGlobalVariables()
 {
-    pMinuitVector_tool->clear();
-    globalTotalCharge_tool = 0.f;
-    globalTrackLength_tool = 0.f;
-    globalTotalHitWidth_tool = 0.f;
+    pMinuitVector->clear();
+    globalTotalCharge = 0.f;
+    globalTrackLength = 0.f;
+    globalTotalHitWidth = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1479,6 +1563,12 @@ StatusCode TrackDirectionTool::ReadSettings(const TiXmlHandle xmlHandle)
 
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "EnableSplitting", m_enableSplitting));
+
+    PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
+        "WriteTable", m_writeTable));
+
+    PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
+        "FileName", m_fileName));
 
     return STATUS_CODE_SUCCESS;
 }

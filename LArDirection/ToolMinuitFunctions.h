@@ -238,20 +238,20 @@ double GetLengthfromEnergy_Tool(lar_content::TrackDirectionTool::LookupTable &lo
 
 void GetForwardsChiSquared_Tool(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t )
 {
-    double Ee(par[0]), L(par[1] * globalTrackLength_tool);
+    double Ee(par[0]), L(par[1] * globalTrackLength);
 
-    lar_content::TrackDirectionTool::LookupTable lookupTable = globalMuonLookupTable_tool;
+    lar_content::TrackDirectionTool::LookupTable lookupTable = globalMuonLookupTable;
     double M = 105.7;
 
     double Le(GetLengthfromEnergy_Tool(lookupTable, Ee));
     double Ls(Le - L);
     double Es(GetEnergyfromLength_Tool(lookupTable, Ls));
 
-    double alpha((Es - Ee)/globalTotalCharge_tool), beta(L/globalTotalHitWidth_tool);
+    double alpha((Es - Ee)/globalTotalCharge), beta(L/globalTotalHitWidth);
 
     lar_content::TrackDirectionTool::HitChargeVector binnedHitChargeVector;
 
-    BinHitChargeVector_Tool(*pMinuitVector_tool, binnedHitChargeVector);
+    BinHitChargeVector_Tool(*pMinuitVector, binnedHitChargeVector);
 
     double chisquared(0.0);
 
@@ -273,26 +273,26 @@ void GetForwardsChiSquared_Tool(Int_t &, Double_t *, Double_t &f, Double_t *par,
 
 void GetBackwardsChiSquared_Tool(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t)
 {
-    double Ee(par[0]), L(par[1] * globalTrackLength_tool);
+    double Ee(par[0]), L(par[1] * globalTrackLength);
 
-    lar_content::TrackDirectionTool::LookupTable lookupTable = globalMuonLookupTable_tool;
+    lar_content::TrackDirectionTool::LookupTable lookupTable = globalMuonLookupTable;
     double M = 105.7;
 
     double Le(GetLengthfromEnergy_Tool(lookupTable, Ee));
     double Ls(Le - L);
     double Es(GetEnergyfromLength_Tool(lookupTable, Ls));
 
-    double alpha((Es - Ee)/globalTotalCharge_tool), beta(L/globalTotalHitWidth_tool);
+    double alpha((Es - Ee)/globalTotalCharge), beta(L/globalTotalHitWidth);
 
     lar_content::TrackDirectionTool::HitChargeVector binnedHitChargeVector;
 
-    BinHitChargeVector_Tool(*pMinuitVector_tool, binnedHitChargeVector);
+    BinHitChargeVector_Tool(*pMinuitVector, binnedHitChargeVector);
 
     double chisquared(0.0);
 
     for (lar_content::TrackDirectionTool::HitCharge hitCharge : binnedHitChargeVector)
     {
-        double L_i(Ls + (par[1] * (globalTrackLength_tool - hitCharge.GetLongitudinalPosition())));
+        double L_i(Ls + (par[1] * (globalTrackLength - hitCharge.GetLongitudinalPosition())));
         double E_i(GetEnergyfromLength_Tool(lookupTable, L_i));
 
         double dEdx_2D(par[2] * (beta/alpha) * BetheBloch_Tool(E_i, M));
