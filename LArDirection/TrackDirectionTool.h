@@ -9,6 +9,8 @@
 #define LAR_TRACK_DIRECTION_TOOL_H 1
 
 #include "larpandoracontent/LArObjects/LArTwoDSlidingFitResult.h"
+#include "larpandoracontent/LArObjects/LArPfoObjects.h"
+#include "larpandoracontent/LArHelpers/LArPfoHelper.h"
 
 #include "Pandora/AlgorithmTool.h"
 
@@ -490,7 +492,9 @@ public:
 
     };
 
-    TrackDirectionTool::FitResult Run(pandora::Algorithm *const pAlgorithm, const pandora::Cluster *const pTargetClusterW);
+    TrackDirectionTool::FitResult GetClusterDirection(const pandora::Cluster *const pTargetClusterW);
+
+    TrackDirectionTool::FitResult GetPfoDirection(const pandora::ParticleFlowObject *const pPfo);
 
     void SetLookupTable();
 
@@ -501,6 +505,8 @@ public:
     void ReadLookupTableFromTree(LookupTable &lookupTable);
 
     void SetEndpoints(FitResult &fitResult, const pandora::Cluster *const pCluster);
+
+    void SetEndpoints(FitResult &fitResult, const LArTrackStateVector &trackStateVector);
 
     void FillHitChargeVector(const pandora::Cluster *const pCluster, HitChargeVector &hitChargeVector);
 

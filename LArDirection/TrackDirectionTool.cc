@@ -43,7 +43,7 @@ namespace lar_content
 {
 
 TrackDirectionTool::TrackDirectionTool() :
-    m_slidingFitWindow(20),
+    m_slidingFitWindow(5),
     m_minClusterCaloHits(50),
     m_minClusterLengthSquared(30.f * 30.f),
     m_numberTrackEndHits(100000),
@@ -63,30 +63,93 @@ TrackDirectionTool::~TrackDirectionTool()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-TrackDirectionTool::FitResult TrackDirectionTool::Run(pandora::Algorithm *const pAlgorithm, const Cluster *const pTargetClusterW)
+TrackDirectionTool::FitResult TrackDirectionTool::GetClusterDirection(const Cluster *const pTargetClusterW)
 {
-    if (PandoraContentApi::GetSettings(*pAlgorithm)->ShouldDisplayAlgorithmInfo())
-       std::cout << "----> Running Algorithm Tool: " << this->GetInstanceName() << ", " << this->GetType() << std::endl;
-
     if (LArClusterHelper::GetClusterHitType(pTargetClusterW) != TPC_VIEW_W)
     {
         std::cout << "ERROR: cluster is not in the W view!" << std::endl;
         throw StatusCodeException(STATUS_CODE_FAILURE);
     }
 
+
+    std::cout << "-" << std::endl;
     this->SetLookupTable();
+    std::cout << "--" << std::endl;
 
     try
     {
         FitResult finalFitResult;
 
+    std::cout << "---" << std::endl;
         this->AddToSlidingFitCache(pTargetClusterW);
+    std::cout << "----" << std::endl;
         this->GetCalorimetricDirection(pTargetClusterW, finalFitResult);
         this->SetEndpoints(finalFitResult, pTargetClusterW);
 
-        return finalFitResult;
         this->TidyUp();
+        return finalFitResult;
     }
+    catch (StatusCodeException &statusCodeException)
+    {
+        this->TidyUp();
+        throw statusCodeException;
+    }
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+TrackDirectionTool::FitResult TrackDirectionTool::GetPfoDirection(const pandora::ParticleFlowObject *const pPfo)
+{
+    try 
+    {
+        if (!LArPfoHelper::IsThreeD(pPfo))
+        {
+            std::cout << "ERROR: PFO is not 3D! Please give the tool a 2D cluster using GetClusterDirection." << std::endl;
+            throw StatusCodeException(STATUS_CODE_FAILURE);
+        }
+        std::cout << "ALPHA" << std::endl;
+
+        const pandora::Vertex *const pVertex = LArPfoHelper::GetVertex(pPfo);
+        const float slidingFitPitch(LArGeometryHelper::GetWireZPitch(this->GetPandora()));
+        LArTrackStateVector trackStateVector;
+        LArPfoHelper::GetSlidingFitTrajectory(pPfo, pVertex, m_slidingFitWindow, slidingFitPitch, trackStateVector);
+
+        std::cout << "A" << std::endl;
+
+        HitType hitType(TPC_VIEW_W);
+        ClusterList clusterListW;
+        LArPfoHelper::GetClusters(pPfo, hitType, clusterListW);
+
+        //In case there is more than one W cluster, pick the longest one
+        float currentLength(std::numeric_limits<float>::min());
+        ClusterList longestClusterList;
+
+        std::cout << "B" << std::endl;
+
+        for (const Cluster *const pCluster : clusterListW)
+        {    
+            if (LArClusterHelper::GetLength(pCluster) > currentLength)
+            {    
+                currentLength = LArClusterHelper::GetLength(pCluster);
+                longestClusterList.clear();
+                longestClusterList.push_back(pCluster);
+            }    
+        } 
+
+        std::cout << "C" << std::endl;
+
+        FitResult finalFitResult;
+        const Cluster *const pClusterW(*(longestClusterList.begin())); 
+
+        std::cout << "D" << std::endl;
+    
+        finalFitResult = GetClusterDirection(pClusterW); 
+        std::cout << "E" << std::endl;
+        SetEndpoints(finalFitResult, trackStateVector);
+        this->TidyUp();
+        return finalFitResult;
+    }
+
     catch (StatusCodeException &statusCodeException)
     {
         this->TidyUp();
@@ -235,13 +298,18 @@ void TrackDirectionTool::SetEndpoints(FitResult &fitResult, const Cluster *const
 
     fitResult.SetBeginpoint(lowZVector);
     fitResult.SetEndpoint(highZVector);
+}
 
-    //const TwoDSlidingFitResult &slidingFitResult(this->GetCachedSlidingFitResult(pCluster));
-    //const pandora::CartesianVector minLayerPosition(slidingFitResult.GetGlobalMinLayerPosition());
-    //const pandora::CartesianVector maxLayerPosition(slidingFitResult.GetGlobalMaxLayerPosition());
+//------------------------------------------------------------------------------------------------------------------------------------------
 
-    //fitResult.SetBeginpoint(minLayerPosition);
-    //fitResult.SetEndpoint(maxLayerPosition);
+void TrackDirectionTool::SetEndpoints(FitResult &fitResult, const LArTrackStateVector &trackStateVector)
+{
+    TrackState firstTrackState(*(trackStateVector.begin())), lastTrackState(*(std::prev(trackStateVector.end(), 1)));
+    const pandora::CartesianVector initialPosition(firstTrackState.GetPosition());
+    const pandora::CartesianVector endPosition(lastTrackState.GetPosition());
+
+    fitResult.SetBeginpoint(initialPosition);
+    fitResult.SetEndpoint(endPosition);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1391,22 +1459,28 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
 
 void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW, FitResult &finalFitResult)
 {
+    std::cout << "0" << std::endl;
     HitChargeVector hitChargeVector;
     this->FillHitChargeVector(pTargetClusterW, hitChargeVector);
+    std::cout << "1" << std::endl;
 
     HitChargeVector filteredHitChargeVector;
     this->TrackInnerFilter(hitChargeVector, filteredHitChargeVector);
+    std::cout << "2" << std::endl;
 
     this->SimpleTrackEndFilter(filteredHitChargeVector);
+    std::cout << "3" << std::endl;
 
     if (m_enableFragmentRemoval)
         this->TrackEndFilter(filteredHitChargeVector);
+    std::cout << "4" << std::endl;
 
     std::sort(filteredHitChargeVector.begin(), filteredHitChargeVector.end(), SortHitChargeVectorByRL);
 
     //Hypothesis one: clean single particle
     FitResult initialFitResult;
     this->FitHitChargeVector(filteredHitChargeVector, initialFitResult);
+    std::cout << "5" << std::endl;
 
     bool likelyForwards(initialFitResult.GetDirectionEstimate() == 1 && filteredHitChargeVector.size() >= 400 && initialFitResult.GetForwardsChiSquared()/initialFitResult.GetNHits() <= 1.25);
     bool likelyBackwards(initialFitResult.GetDirectionEstimate() == 0 && filteredHitChargeVector.size() <= 200 && initialFitResult.GetBackwardsChiSquared()/initialFitResult.GetNHits() <= 1.25);
@@ -1419,7 +1493,9 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
 
         if (m_enableSplitting)
         {
+    std::cout << "6" << std::endl;
             this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied);
+    std::cout << "7" << std::endl;
         }
 
         if (!splitApplied)
@@ -1427,12 +1503,15 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
             if (m_enableFragmentRemoval)
             {
                 //Fragment Removal
+    std::cout << "8" << std::endl;
                 HitChargeVector fragmentlessHitChargeVector;
                 this->FragmentRemoval(filteredHitChargeVector, fragmentlessHitChargeVector);
+    std::cout << "9" << std::endl;
 
                 //Hypothesis three: fragmentless single particle
                 FitResult fragmentRemovalFitResult;
                 this->FitHitChargeVector(fragmentlessHitChargeVector, fragmentRemovalFitResult);
+    std::cout << "10" << std::endl;
 
                 bool likelyCorrectFragmentRemoval(initialFitResult.GetDirectionEstimate() != fragmentRemovalFitResult.GetDirectionEstimate() && initialFitResult.GetMinChiSquaredPerHit() - fragmentRemovalFitResult.GetMinChiSquaredPerHit() >= 2.0);
 
@@ -1470,8 +1549,14 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
 
 void TrackDirectionTool::AddToSlidingFitCache(const Cluster *const pCluster)
 {
+    if (m_slidingFitResultMap.find(pCluster) != m_slidingFitResultMap.end())
+        return;
+
+    std::cout << "*" << std::endl;
     const float slidingFitPitch(LArGeometryHelper::GetWireZPitch(this->GetPandora()));
+    std::cout << "**" << std::endl;
     const TwoDSlidingFitResult slidingFitResult(pCluster, m_slidingFitWindow, slidingFitPitch);
+    std::cout << "***" << std::endl;
 
     if (!m_slidingFitResultMap.insert(TwoDSlidingFitResultMap::value_type(pCluster, slidingFitResult)).second)
         throw StatusCodeException(STATUS_CODE_FAILURE);

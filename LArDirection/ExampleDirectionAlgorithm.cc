@@ -21,16 +21,32 @@ StatusCode ExampleDirectionAlgorithm::Run()
     const ClusterList *pClusterList(nullptr);
     PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::GetList(*this, m_clusterListName, pClusterList));
 
+    const PfoList *pPfoList(nullptr);
+    PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::GetList(*this, m_pfoListName, pPfoList));
+
     ClusterVector clusterVector(pClusterList->begin(), pClusterList->end());
+    std::cout << "Cluster fits." << std::endl;
 
     for (const Cluster *const pCluster : clusterVector)
     {    
         if (LArClusterHelper::GetClusterHitType(pCluster) == TPC_VIEW_W)
         {
-            TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->Run(this, pCluster);
+            TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
             std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
-            std::cout << "Vertex x coordinate: " << fitResult.GetBeginpoint().GetX() << std::endl;
+            std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
+            std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
         }
+    }
+
+    pandora::PfoVector pfoVector(pPfoList->begin(), pPfoList->end());
+    std::cout << "PFO fits." << std::endl;
+
+    for (const pandora::ParticleFlowObject *const pPfo : pfoVector)
+    {
+        TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->GetPfoDirection(pPfo);
+        std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
+        std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
+        std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
     }
 
     return STATUS_CODE_SUCCESS;
@@ -42,6 +58,9 @@ StatusCode ExampleDirectionAlgorithm::ReadSettings(const TiXmlHandle xmlHandle)
 {
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "ClusterListName", m_clusterListName));
+
+    PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
+        "PfoListName", m_pfoListName));
 
     AlgorithmTool *pAlgorithmTool(nullptr);
 

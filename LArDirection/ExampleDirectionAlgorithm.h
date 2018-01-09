@@ -33,7 +33,8 @@ private:
     pandora::StatusCode Run();
     pandora::StatusCode ReadSettings(const pandora::TiXmlHandle xmlHandle);
 
-    std::string             m_clusterListName;         ///< The requested calo hit list name
+    std::string             m_clusterListName;
+    std::string             m_pfoListName;  
     TrackDirectionTool      *m_pTrackDirectionTool;
 };
 
