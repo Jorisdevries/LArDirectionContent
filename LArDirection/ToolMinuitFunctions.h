@@ -31,7 +31,7 @@ const double delta0 = 0.0;
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void BinHitChargeVector_Tool(const lar_content::TrackDirectionTool::HitChargeVector &hitChargeVector, lar_content::TrackDirectionTool::HitChargeVector &binnedHitChargeVector)
+void BinHitChargeVector(const lar_content::TrackDirectionTool::HitChargeVector &hitChargeVector, lar_content::TrackDirectionTool::HitChargeVector &binnedHitChargeVector)
 {
     float binSize = (hitChargeVector.size() > 50 ? (0.5 + (hitChargeVector.size() - 50) * 2.5/300) : 0.0);
 
@@ -90,7 +90,7 @@ void BinHitChargeVector_Tool(const lar_content::TrackDirectionTool::HitChargeVec
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-double DensityCorrection_Tool(double &T, double &M)
+double DensityCorrection(double &T, double &M)
 {
     double p = std::sqrt((T*T) + 2*T*M);
     double gamma = std::sqrt(1 + ((p/M) * (p/M)));
@@ -107,20 +107,20 @@ double DensityCorrection_Tool(double &T, double &M)
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-double BetheBloch_Tool(double &T, double &M)
+double BetheBloch(double &T, double &M)
 {
     double p(std::sqrt((T*T) + 2*T*M));
     double gamma(std::sqrt(1 + ((p/M) * (p/M))));
     double beta(std::sqrt(1 - 1 / (gamma*gamma)));
 
     double T_max(2 * m_e * (beta*gamma*beta*gamma) / (1 + 2 * gamma * m_e / M + ((m_e/M) * (m_e/M))));
-    return rho * ((K * z * z * Z) / A) * (0.5*std::log(2 * m_e * T_max * (beta*gamma*beta*gamma) / (I*I) ) - (beta*beta) - (0.5*DensityCorrection_Tool(p, M))) / (beta*beta); //in MeV/cm
+    return rho * ((K * z * z * Z) / A) * (0.5*std::log(2 * m_e * T_max * (beta*gamma*beta*gamma) / (I*I) ) - (beta*beta) - (0.5*DensityCorrection(p, M))) / (beta*beta); //in MeV/cm
 
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void FillLookupTable_Tool(lar_content::TrackDirectionTool::LookupTable &lookupTable, double M)
+void FillLookupTable(lar_content::TrackDirectionTool::LookupTable &lookupTable, double M)
 {
     std::map<int, double> lookupMap;
     std::map<double, int> reverseLookupMap;
@@ -130,7 +130,7 @@ void FillLookupTable_Tool(lar_content::TrackDirectionTool::LookupTable &lookupTa
 
     for (double n = 0; n < 100000; ++n)
     {
-        double currentdEdx = BetheBloch_Tool(currentEnergy, M);
+        double currentdEdx = BetheBloch(currentEnergy, M);
 
         if ((currentdEdx * binWidth) >= currentEnergy)
         {
@@ -184,7 +184,7 @@ void FillLookupTable_Tool(lar_content::TrackDirectionTool::LookupTable &lookupTa
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-double GetEnergyfromLength_Tool(lar_content::TrackDirectionTool::LookupTable &lookupTable, double &trackLength)
+double GetEnergyfromLength(lar_content::TrackDirectionTool::LookupTable &lookupTable, double &trackLength)
 {
     std::map<int, double> lookupMap(lookupTable.GetMap());
     double binWidth(lookupTable.GetBinWidth());
@@ -213,7 +213,7 @@ double GetEnergyfromLength_Tool(lar_content::TrackDirectionTool::LookupTable &lo
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-double GetLengthfromEnergy_Tool(lar_content::TrackDirectionTool::LookupTable &lookupTable, double &currentEnergy)
+double GetLengthfromEnergy(lar_content::TrackDirectionTool::LookupTable &lookupTable, double &currentEnergy)
 {
     std::map<double, int> reverseLookupMap(lookupTable.GetReverseMap());
     double binWidth(lookupTable.GetBinWidth());
@@ -236,31 +236,31 @@ double GetLengthfromEnergy_Tool(lar_content::TrackDirectionTool::LookupTable &lo
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void GetForwardsChiSquared_Tool(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t )
+void GetForwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t )
 {
     double Ee(par[0]), L(par[1] * globalTrackLength);
 
     lar_content::TrackDirectionTool::LookupTable lookupTable = globalMuonLookupTable;
     double M = 105.7;
 
-    double Le(GetLengthfromEnergy_Tool(lookupTable, Ee));
+    double Le(GetLengthfromEnergy(lookupTable, Ee));
     double Ls(Le - L);
-    double Es(GetEnergyfromLength_Tool(lookupTable, Ls));
+    double Es(GetEnergyfromLength(lookupTable, Ls));
 
     double alpha((Es - Ee)/globalTotalCharge), beta(L/globalTotalHitWidth);
 
     lar_content::TrackDirectionTool::HitChargeVector binnedHitChargeVector;
 
-    BinHitChargeVector_Tool(*pMinuitVector, binnedHitChargeVector);
+    BinHitChargeVector(*pMinuitVector, binnedHitChargeVector);
 
     double chisquared(0.0);
 
     for (lar_content::TrackDirectionTool::HitCharge hitCharge : binnedHitChargeVector)
     {
         double L_i(Ls + (par[1] * hitCharge.GetLongitudinalPosition()));
-        double E_i(GetEnergyfromLength_Tool(lookupTable, L_i));
+        double E_i(GetEnergyfromLength(lookupTable, L_i));
 
-        double dEdx_2D(par[2] * (beta/alpha) * BetheBloch_Tool(E_i, M));
+        double dEdx_2D(par[2] * (beta/alpha) * BetheBloch(E_i, M));
         double QoverX(hitCharge.GetQoverX());
 
         chisquared += ( (QoverX - dEdx_2D) * (QoverX - dEdx_2D) )/(hitCharge.GetUncertainty() * hitCharge.GetUncertainty());
@@ -271,31 +271,31 @@ void GetForwardsChiSquared_Tool(Int_t &, Double_t *, Double_t &f, Double_t *par,
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void GetBackwardsChiSquared_Tool(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t)
+void GetBackwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t)
 {
     double Ee(par[0]), L(par[1] * globalTrackLength);
 
     lar_content::TrackDirectionTool::LookupTable lookupTable = globalMuonLookupTable;
     double M = 105.7;
 
-    double Le(GetLengthfromEnergy_Tool(lookupTable, Ee));
+    double Le(GetLengthfromEnergy(lookupTable, Ee));
     double Ls(Le - L);
-    double Es(GetEnergyfromLength_Tool(lookupTable, Ls));
+    double Es(GetEnergyfromLength(lookupTable, Ls));
 
     double alpha((Es - Ee)/globalTotalCharge), beta(L/globalTotalHitWidth);
 
     lar_content::TrackDirectionTool::HitChargeVector binnedHitChargeVector;
 
-    BinHitChargeVector_Tool(*pMinuitVector, binnedHitChargeVector);
+    BinHitChargeVector(*pMinuitVector, binnedHitChargeVector);
 
     double chisquared(0.0);
 
     for (lar_content::TrackDirectionTool::HitCharge hitCharge : binnedHitChargeVector)
     {
         double L_i(Ls + (par[1] * (globalTrackLength - hitCharge.GetLongitudinalPosition())));
-        double E_i(GetEnergyfromLength_Tool(lookupTable, L_i));
+        double E_i(GetEnergyfromLength(lookupTable, L_i));
 
-        double dEdx_2D(par[2] * (beta/alpha) * BetheBloch_Tool(E_i, M));
+        double dEdx_2D(par[2] * (beta/alpha) * BetheBloch(E_i, M));
         double QoverX(hitCharge.GetQoverX());
 
         chisquared += ( (QoverX - dEdx_2D) * (QoverX - dEdx_2D) )/(hitCharge.GetUncertainty() * hitCharge.GetUncertainty());

@@ -370,6 +370,20 @@ public:
          *
          *  @return the address of the vertex
          */
+        void SetForwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector);
+
+        /**
+         *  @brief  Set the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetBackwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
         float GetForwardsChiSquared();
 
         /**
@@ -456,12 +470,29 @@ public:
          */
         float GetProbability();
 
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetHypothesis(int hypothesis);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        int GetHypothesis();
+
 
     private:
         HitChargeVector     m_hitchargevector;
         HitChargeVector     m_forwardsrecohits;
         HitChargeVector     m_backwardsrecohits;
+
         int                 m_nhits;
+        int                 m_hypothesis;
+
         float               m_meanqoverx;
         float               m_forwardschisquared;
         float               m_backwardschisquared;
@@ -583,6 +614,12 @@ public:
     void PerformFits(const HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2);
 
     void GetCalorimetricDirection(const pandora::Cluster* pTargetClusterW, DirectionFitObject &finalDirectionFitObject);
+
+    void TestHypothesisOne(DirectionFitObject &directionFitObject);
+
+    void TestHypothesisTwo(const pandora::Cluster* pTargetClusterW, DirectionFitObject &directionFitObject);
+
+    void TestHypothesisThree(DirectionFitObject &directionFitObject);
 
     void AddToSlidingFitCache(const pandora::Cluster *const pCluster);
 
@@ -889,15 +926,31 @@ inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObjec
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
+
 inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetForwardsRecoHits()
 {
     return m_forwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
+
 inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetBackwardsRecoHits()
 {
     return m_backwardsrecohits;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetForwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector)
+{
+    m_forwardsrecohits = hitChargeVector;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetBackwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector)
+{
+    m_backwardsrecohits = hitChargeVector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -995,6 +1048,20 @@ inline void TrackDirectionTool::DirectionFitObject::SetProbability(float &probab
 inline float TrackDirectionTool::DirectionFitObject::GetProbability()
 {
     return m_probability;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetHypothesis(int hypothesis)
+{
+    m_hypothesis = hypothesis;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline int TrackDirectionTool::DirectionFitObject::GetHypothesis()
+{
+    return m_hypothesis;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
