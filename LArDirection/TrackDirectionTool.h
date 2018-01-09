@@ -316,7 +316,7 @@ public:
         double                                      m_maxrange;
     };
 
-    class FitResult
+    class DirectionFitObject
     {
     public:
 
@@ -326,7 +326,7 @@ public:
          *  @param  pVertex the address of the vertex
          *  @param  score the score
          */
-        FitResult();
+        DirectionFitObject();
 
         /**
          *  @brief  Constructor
@@ -334,7 +334,7 @@ public:
          *  @param  pVertex the address of the vertex
          *  @param  score the score
          */
-        FitResult(HitChargeVector &hitChargeVector, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared);
+        DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared);
 
         /**
          *  @brief  Constructor
@@ -342,7 +342,7 @@ public:
          *  @param  pVertex the address of the vertex
          *  @param  score the score
          */
-        FitResult(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared);
+        DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared);
 
         /**
          *  @brief  Get the address of the vertex
@@ -492,21 +492,43 @@ public:
 
     };
 
-    TrackDirectionTool::FitResult GetClusterDirection(const pandora::Cluster *const pTargetClusterW);
+    TrackDirectionTool::DirectionFitObject GetClusterDirection(const pandora::Cluster *const pTargetClusterW);
 
-    TrackDirectionTool::FitResult GetPfoDirection(const pandora::ParticleFlowObject *const pPfo);
+    TrackDirectionTool::DirectionFitObject GetPfoDirection(const pandora::ParticleFlowObject *const pPfo);
+
+    void WriteLookupTableToTree(LookupTable &lookupTable);
+
+    private:
+
+    pandora::StatusCode ReadSettings(const pandora::TiXmlHandle xmlHandle);
+
+    //-----------------------------------------------------------------------------------------------
+
+    unsigned int            m_slidingFitWindow;                 ///< The layer window for the sliding linear fits
+    TwoDSlidingFitResultMap m_slidingFitResultMap;              ///< The sliding fit result map
+
+    unsigned int            m_minClusterCaloHits;               ///< The min number of hits in base cluster selection method
+    float                   m_minClusterLengthSquared;          ///< The min length (squared) in base cluster selection method
+
+    int                     m_targetParticlePDG;
+    int                     m_numberTrackEndHits;
+    bool                    m_enableFragmentRemoval;
+    bool                    m_enableSplitting;
+    bool                    m_writeTable;
+
+    std::string             m_fileName;
+
+    //-----------------------------------------------------------------------------------------------
 
     void SetLookupTable();
 
     const pandora::Cluster* GetTargetClusterFromPFO(const pandora::ParticleFlowObject* PFO);
 
-    void WriteLookupTableToTree(LookupTable &lookupTable);
-
     void ReadLookupTableFromTree(LookupTable &lookupTable);
 
-    void SetEndpoints(FitResult &fitResult, const pandora::Cluster *const pCluster);
+    void SetEndpoints(DirectionFitObject &fitResult, const pandora::Cluster *const pCluster);
 
-    void SetEndpoints(FitResult &fitResult, const LArTrackStateVector &trackStateVector);
+    void SetEndpoints(DirectionFitObject &fitResult, const LArTrackStateVector &trackStateVector);
 
     void FillHitChargeVector(const pandora::Cluster *const pCluster, HitChargeVector &hitChargeVector);
 
@@ -528,7 +550,7 @@ public:
 
     void FindTrackEndJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
 
-    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, FitResult &fitResult1, FitResult &fitResult2, bool &splitApplied);
+    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied);
 
     void FindKinkSize(const pandora::Cluster *const pCluster, float &splitPosition, float &kinkSize);
 
@@ -550,21 +572,21 @@ public:
 
     void FindBowlSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
 
-    void FitHitChargeVector(const HitChargeVector &hitChargeVector, TrackDirectionTool::FitResult &fitResult, int numberHitsToConsider=1000000);
+    void FitHitChargeVector(const HitChargeVector &hitChargeVector, TrackDirectionTool::DirectionFitObject &fitResult, int numberHitsToConsider=1000000);
 
-    void FitHitChargeVector(HitChargeVector &hitChargeVector1, HitChargeVector &hitChargeVector2, TrackDirectionTool::FitResult &fitResult1, TrackDirectionTool::FitResult &fitResult2, int numberHitsToConsider=1000000);
+    void FitHitChargeVector(HitChargeVector &hitChargeVector1, HitChargeVector &hitChargeVector2, TrackDirectionTool::DirectionFitObject &fitResult1, TrackDirectionTool::DirectionFitObject &fitResult2, int numberHitsToConsider=1000000);
 
-    void ComputeProbability(FitResult &fitResult);
+    void ComputeProbability(DirectionFitObject &fitResult);
 
     void SetGlobalMinuitPreliminaries(const HitChargeVector &hitChargeVector);
 
     void PerformFits(const HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2);
 
-    void GetCalorimetricDirection(const pandora::Cluster* pTargetClusterW, FitResult &finalFitResult);
+    void GetCalorimetricDirection(const pandora::Cluster* pTargetClusterW, DirectionFitObject &finalDirectionFitObject);
 
     void AddToSlidingFitCache(const pandora::Cluster *const pCluster);
 
-    const TwoDSlidingFitResult &GetCachedSlidingFitResult(const pandora::Cluster *const pCluster) const;
+    const TwoDSlidingFitResult &GetCachedSlidingDirectionFitObject(const pandora::Cluster *const pCluster) const;
 
     void TidyUp();
 
@@ -575,25 +597,6 @@ public:
     static bool SortByDistanceToNN(HitCharge &hitCharge1, HitCharge &hitCharge2);
     static bool SortJumpVector(JumpObject &jumpObject1, JumpObject &jumpObject2);
 
-    private:
-
-    pandora::StatusCode ReadSettings(const pandora::TiXmlHandle xmlHandle);
-
-    //-----------------------------------------------------------------------------------------------
-
-    unsigned int            m_slidingFitWindow;                 ///< The layer window for the sliding linear fits
-    TwoDSlidingFitResultMap m_slidingFitResultMap;              ///< The sliding fit result map
-
-    unsigned int            m_minClusterCaloHits;               ///< The min number of hits in base cluster selection method
-    float                   m_minClusterLengthSquared;          ///< The min length (squared) in base cluster selection method
-
-    int                     m_targetParticlePDG;
-    int                     m_numberTrackEndHits;
-    bool                    m_enableFragmentRemoval;
-    bool                    m_enableSplitting;
-    bool                    m_writeTable;
-
-    std::string             m_fileName;
 };
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -839,7 +842,7 @@ inline double TrackDirectionTool::LookupTable::GetMaxRange()
 //------------------------------------------------------------------------------------------------------------------------------------------
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::FitResult::FitResult()
+inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
 {
     HitChargeVector emptyVector;
     m_hitchargevector = (emptyVector);
@@ -853,7 +856,7 @@ inline TrackDirectionTool::FitResult::FitResult()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::FitResult::FitResult(HitChargeVector &hitChargeVector, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared)
+inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared)
 {
     HitChargeVector emptyVector;
     m_hitchargevector = hitChargeVector;
@@ -867,7 +870,7 @@ inline TrackDirectionTool::FitResult::FitResult(HitChargeVector &hitChargeVector
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::FitResult::FitResult(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared) :
+inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared) :
     m_hitchargevector(hitChargeVector),
     m_forwardsrecohits(forwardsRecoHits),
     m_backwardsrecohits(backwardsRecoHits),
@@ -880,75 +883,75 @@ inline TrackDirectionTool::FitResult::FitResult(HitChargeVector &hitChargeVector
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::FitResult::GetHitChargeVector()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetHitChargeVector()
 {
     return m_hitchargevector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::FitResult::GetForwardsRecoHits()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetForwardsRecoHits()
 {
     return m_forwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::FitResult::GetBackwardsRecoHits()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetBackwardsRecoHits()
 {
     return m_backwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::GetForwardsChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquared()
 {
     return m_forwardschisquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::GetBackwardsChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquared()
 {
     return m_backwardschisquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline int TrackDirectionTool::FitResult::GetNHits()
+inline int TrackDirectionTool::DirectionFitObject::GetNHits()
 {
     return m_nhits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline int TrackDirectionTool::FitResult::GetDirectionEstimate()
+inline int TrackDirectionTool::DirectionFitObject::GetDirectionEstimate()
 {
     return (m_forwardschisquared <= m_backwardschisquared ? 1 : 0);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::GetMinChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetMinChiSquared()
 {
     return std::min(m_forwardschisquared, m_backwardschisquared);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::GetMinChiSquaredPerHit()
+inline float TrackDirectionTool::DirectionFitObject::GetMinChiSquaredPerHit()
 {
     return (m_nhits != 0 ? std::min(m_forwardschisquared, m_backwardschisquared)/m_nhits : std::numeric_limits<float>::max());
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::GetMeanQoverX()
+inline float TrackDirectionTool::DirectionFitObject::GetMeanQoverX()
 {
     return m_meanqoverx;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::FitResult::SetBeginpoint(const pandora::CartesianVector &beginPoint)
+inline void TrackDirectionTool::DirectionFitObject::SetBeginpoint(const pandora::CartesianVector &beginPoint)
 {
     m_beginx = beginPoint.GetX();
     m_beginy = beginPoint.GetY();
@@ -957,7 +960,7 @@ inline void TrackDirectionTool::FitResult::SetBeginpoint(const pandora::Cartesia
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::FitResult::SetEndpoint(const pandora::CartesianVector &endPoint)
+inline void TrackDirectionTool::DirectionFitObject::SetEndpoint(const pandora::CartesianVector &endPoint)
 {
     m_endx = endPoint.GetX();
     m_endy = endPoint.GetY();
@@ -966,7 +969,7 @@ inline void TrackDirectionTool::FitResult::SetEndpoint(const pandora::CartesianV
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetBeginpoint()
+inline const pandora::CartesianVector TrackDirectionTool::DirectionFitObject::GetBeginpoint()
 {
     const pandora::CartesianVector beginPoint(m_beginx, m_beginy, m_beginz);
     return beginPoint;
@@ -974,7 +977,7 @@ inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetBeginpoi
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetEndpoint()
+inline const pandora::CartesianVector TrackDirectionTool::DirectionFitObject::GetEndpoint()
 {
     const pandora::CartesianVector endPoint(m_endx, m_endy, m_endz);
     return endPoint;
@@ -982,14 +985,14 @@ inline const pandora::CartesianVector TrackDirectionTool::FitResult::GetEndpoint
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::FitResult::SetProbability(float &probability)
+inline void TrackDirectionTool::DirectionFitObject::SetProbability(float &probability)
 {
     m_probability = probability;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::FitResult::GetProbability()
+inline float TrackDirectionTool::DirectionFitObject::GetProbability()
 {
     return m_probability;
 }

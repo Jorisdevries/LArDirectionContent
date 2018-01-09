@@ -31,7 +31,7 @@ StatusCode ExampleDirectionAlgorithm::Run()
     {    
         if (LArClusterHelper::GetClusterHitType(pCluster) == TPC_VIEW_W)
         {
-            TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
+            TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
             std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
             std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
             std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
@@ -43,7 +43,7 @@ StatusCode ExampleDirectionAlgorithm::Run()
 
     for (const pandora::ParticleFlowObject *const pPfo : pfoVector)
     {
-        TrackDirectionTool::FitResult fitResult = m_pTrackDirectionTool->GetPfoDirection(pPfo);
+        TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetPfoDirection(pPfo);
         std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
         std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
         std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
