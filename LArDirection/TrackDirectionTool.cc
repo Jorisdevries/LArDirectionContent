@@ -65,16 +65,16 @@ TrackDirectionTool::~TrackDirectionTool()
 
 TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetClusterDirection(const Cluster *const pTargetClusterW)
 {
-    if (LArClusterHelper::GetClusterHitType(pTargetClusterW) != TPC_VIEW_W)
-    {
-        std::cout << "ERROR: cluster is not in the W view!" << std::endl;
-        throw StatusCodeException(STATUS_CODE_FAILURE);
-    }
-
-    this->SetLookupTable();
-
     try
     {
+        if (LArClusterHelper::GetClusterHitType(pTargetClusterW) != TPC_VIEW_W)
+        {
+            std::cout << "ERROR: cluster is not in the W view!" << std::endl;
+            throw StatusCodeException(STATUS_CODE_FAILURE);
+        }
+
+        this->SetLookupTable();
+
         DirectionFitObject finalDirectionFitObject;
 
         this->AddToSlidingFitCache(pTargetClusterW);
@@ -97,9 +97,6 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetPfoDirection(const
 {
     try 
     {
-        if (!LArPfoHelper::IsThreeD(pPfo))
-            std::cout << "WARNING: PFO is not 3D! If a 2D fit is required, consider giving the tool a 2D W cluster directly using GetClusterDirection." << std::endl;
-
         const Cluster *const pClusterW = GetTargetClusterFromPFO(pPfo);
         DirectionFitObject finalDirectionFitObject;
         finalDirectionFitObject = GetClusterDirection(pClusterW); 
@@ -188,7 +185,7 @@ const Cluster* TrackDirectionTool::GetTargetClusterFromPFO(const ParticleFlowObj
     if (clusterListW.size() == 0)
     {
         std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
-        throw StatusCodeException(STATUS_CODE_FAILURE);
+        throw StatusCodeException(STATUS_CODE_NOT_FOUND);
     }
 
     float currentLength(std::numeric_limits<float>::min());
@@ -781,7 +778,7 @@ void TrackDirectionTool::GetAverageQoverWTrackBody(HitChargeVector &hitChargeVec
 
     int nEntries(0);
 
-    for (int q = 0; q < tempHitChargeVector.size() - 1; q++)
+    for (int q = 0; q < tempHitChargeVector.size(); q++)
     {
         if (q <= 0.1 * tempHitChargeVector.size() || q >= 0.6 * tempHitChargeVector.size())
             continue;
@@ -1236,11 +1233,8 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
     }
     else
     {
-        std::cout << "WARNING: using pre-defined probability values because probability.root cannot be found. This is almost certainly the wrong thing to do. Define a probability filename by including <FileName>filename.root</FileName> in the Pandora XML settings file." << std::endl;
+        std::cout << "WARNING: using pre-defined probability values calibrated on CCQEL muons, because probability.root cannot be found. Define a probability filename by including <FileName>filename.root</FileName> in the Pandora XML settings file." << std::endl;
 
-        //std::cout << "ERROR: probability .root file not found. Example: <FileName>probability.root</FileName>" << std::endl;
-        //throw StatusCodeException(STATUS_CODE_FAILURE);
-        
         std::map<float, int> deltaChiSquaredToBinMap = {
         {-15.0, 1}, {-14.625, 2}, {-14.25, 3}, {-13.875, 4}, {-13.5, 5}, {-13.125, 6}, {-12.75, 7}, {-12.375, 8}, {-12.0, 9}, {-11.625, 10},
         {-11.25, 11}, {-10.875, 12}, {-10.5, 13}, {-10.125, 14}, {-9.75, 15}, {-9.375, 16}, {-9.0, 17}, {-8.625, 18}, {-8.25, 19}, {-7.875, 20},

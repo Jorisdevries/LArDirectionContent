@@ -10,6 +10,7 @@
 
 #include "LArDirection/ExampleDirectionAlgorithm.h"
 #include "larpandoracontent/LArHelpers/LArClusterHelper.h"
+#include "larpandoracontent/LArHelpers/LArPfoHelper.h"
 
 using namespace pandora;
 
@@ -25,28 +26,44 @@ StatusCode ExampleDirectionAlgorithm::Run()
     PANDORA_RETURN_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::GetList(*this, m_pfoListName, pPfoList));
 
     ClusterVector clusterVector(pClusterList->begin(), pClusterList->end());
-    std::cout << "Cluster fits." << std::endl;
+    std::cout << ">>>>>> Cluster fits." << std::endl;
 
     for (const Cluster *const pCluster : clusterVector)
     {    
         if (LArClusterHelper::GetClusterHitType(pCluster) == TPC_VIEW_W)
         {
-            TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
-            std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
-            std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
-            std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
+            try
+            {
+                TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
+
+                std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
+                std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
+                std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
+            }
+            catch (...)
+            {
+                std::cout << "Skipping..." << std::endl;
+            }
         }
     }
 
     pandora::PfoVector pfoVector(pPfoList->begin(), pPfoList->end());
-    std::cout << "PFO fits." << std::endl;
+    std::cout << ">>>>>> PFO fits." << std::endl;
 
     for (const pandora::ParticleFlowObject *const pPfo : pfoVector)
     {
-        TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetPfoDirection(pPfo);
-        std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
-        std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
-        std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
+        try
+        {
+            TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetPfoDirection(pPfo);
+            
+            std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
+            std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
+            std::cout << "Endpoint position: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
+        }
+        catch (...)
+        {
+                std::cout << "Skipping..." << std::endl;
+        }
     }
 
     return STATUS_CODE_SUCCESS;
