@@ -25,15 +25,9 @@ using namespace pandora;
 //nasty global parameters necessary for TMinuit
 lar_content::TrackDirectionTool::HitChargeVector* pMinuitVector = new lar_content::TrackDirectionTool::HitChargeVector;
 
-float globalTotalCharge(0.f);
-float globalTrackLength(0.f);
-float globalTotalHitWidth(0.f);
+float globalTotalCharge(0.f), globalTrackLength(0.f), globalTotalHitWidth(0.f);
 
-double globalBinWidth(0.1);
-double globalInitialEnergy(2000.0);
-
-lar_content::TrackDirectionTool::LookupTable globalMuonLookupTable(globalInitialEnergy, globalBinWidth);
-std::string treename("lookuptable"), filename("lookuptable.root");
+static lar_content::TrackDirectionTool::LookupTable globalMuonLookupTable;
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
@@ -44,13 +38,17 @@ namespace lar_content
 
 TrackDirectionTool::TrackDirectionTool() :
     m_slidingFitWindow(5),
-    m_minClusterCaloHits(50),
-    m_minClusterLengthSquared(30.f * 30.f),
+    m_minClusterCaloHits(20),
+    m_minClusterLength(30.f),
     m_numberTrackEndHits(100000),
     m_enableFragmentRemoval(false),
     m_enableSplitting(false),
+    m_tableInitialEnergy(2000.f),
+    m_tableStepSize(0.1f),
     m_writeTable(false),
-    m_fileName("probability.root")
+    m_lookupTableFileName("lookuptable.root"),
+    m_probabilityFileName("probability.root"),
+    m_treeName("lookuptable")
 {
 }
 
@@ -58,7 +56,10 @@ TrackDirectionTool::TrackDirectionTool() :
 
 TrackDirectionTool::~TrackDirectionTool()
 {
-    PANDORA_MONITORING_API(SaveTree(this->GetPandora(), treename.c_str(), filename.c_str(), "UPDATE"));
+    if (m_writeTable)
+    {
+        PANDORA_MONITORING_API(SaveTree(this->GetPandora(), m_treeName.c_str(), m_lookupTableFileName.c_str(), "UPDATE"));
+    }
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -73,7 +74,8 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetClusterDirection(c
             throw StatusCodeException(STATUS_CODE_FAILURE);
         }
 
-        this->SetLookupTable();
+        if (globalMuonLookupTable.GetMap().empty())
+            this->SetLookupTable();
 
         DirectionFitObject finalDirectionFitObject;
 
@@ -141,36 +143,43 @@ void TrackDirectionTool::WriteLookupTableToTree(LookupTable &lookupTable)
         reverseMapVector2.push_back(element.second);
     }
 
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "mapVector1", &mapVector1));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "mapVector2", &mapVector2));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "reverseMapVector1", &reverseMapVector1));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "reverseMapVector2", &reverseMapVector2));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "binWidth", lookupTable.GetBinWidth()));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "initialEnergy", lookupTable.GetInitialEnergy()));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), treename.c_str(), "maxRange", lookupTable.GetMaxRange()));
-    PANDORA_MONITORING_API(FillTree(this->GetPandora(), treename.c_str()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "mapVector1", &mapVector1));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "mapVector2", &mapVector2));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "reverseMapVector1", &reverseMapVector1));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "reverseMapVector2", &reverseMapVector2));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "binWidth", lookupTable.GetBinWidth()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "initialEnergy", lookupTable.GetInitialEnergy()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), m_treeName.c_str(), "maxRange", lookupTable.GetMaxRange()));
+    PANDORA_MONITORING_API(FillTree(this->GetPandora(), m_treeName.c_str()));
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
 void TrackDirectionTool::SetLookupTable()
 {
-    ifstream inputFile(filename);
+    globalMuonLookupTable.SetInitialEnergy(m_tableInitialEnergy);
+    globalMuonLookupTable.SetBinWidth(m_tableStepSize);
+
+    ifstream inputFile(m_lookupTableFileName);
 
     if (inputFile) 
+    {
         this->ReadLookupTableFromTree(globalMuonLookupTable);
-    else
-    {
-        std::cout << "WARNING: filling lookup table because lookuptable.root was not found. To create it, include <WriteTable>true</WriteTable> to the Pandora settings XML file." << std::endl;
-        FillLookupTable(globalMuonLookupTable, 105.7);
+    
+        if (m_writeTable)
+        {
+            FillLookupTable(globalMuonLookupTable, 105.7);
+            this->WriteLookupTableToTree(globalMuonLookupTable);
+        }
     }
-
-    if (!inputFile && m_writeTable)
-        this->WriteLookupTableToTree(globalMuonLookupTable);
     else
     {
+        //std::cout << "WARNING: filling lookup table because lookuptable.root was not found. To create it, include <WriteTable>true</WriteTable> to the Pandora settings XML file." << std::endl;
+        //
         FillLookupTable(globalMuonLookupTable, 105.7);
-        this->WriteLookupTableToTree(globalMuonLookupTable);
+
+        if (m_writeTable)
+            this->WriteLookupTableToTree(globalMuonLookupTable);
     }
 }
 
@@ -209,8 +218,8 @@ const Cluster* TrackDirectionTool::GetTargetClusterFromPFO(const ParticleFlowObj
 
 void TrackDirectionTool::ReadLookupTableFromTree(LookupTable &lookupTable)
 {
-    TFile *f = TFile::Open(filename.c_str());
-    TTree *t1 = (TTree*)f->Get(treename.c_str());
+    TFile *f = TFile::Open(m_lookupTableFileName.c_str());
+    TTree *t1 = (TTree*)f->Get(m_treeName.c_str());
 
     std::vector<int> mapVector1, reverseMapVector2;
     std::vector<double> mapVector2, reverseMapVector1;
@@ -267,6 +276,8 @@ void TrackDirectionTool::ReadLookupTableFromTree(LookupTable &lookupTable)
     lookupTable.SetBinWidth(binWidth);
     lookupTable.SetInitialEnergy(initialEnergy);
     lookupTable.SetMaxRange(maxRange);
+
+    f->Close();
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -354,7 +365,7 @@ void TrackDirectionTool::SetNearestNeighbourValues(HitChargeVector &innerHitChar
     this->GetTrackLength(innerHitChargeVector, trackLength);
 
     std::sort(innerHitChargeVector.begin(), innerHitChargeVector.end(), SortHitChargeVectorByQoverX);
-    float QoverXRange((*innerHitChargeVector.end()).GetQoverX() - (*innerHitChargeVector.begin()).GetQoverX());
+    float QoverXRange((*(std::prev(innerHitChargeVector.end(), 1))).GetQoverX() - (*innerHitChargeVector.begin()).GetQoverX());
 
     for (HitCharge &hitCharge1 : innerHitChargeVector)
     {
@@ -382,7 +393,7 @@ void TrackDirectionTool::SetNearestNeighbourValues(HitChargeVector &innerHitChar
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FragmentRemoval(HitChargeVector &hitChargeVector, HitChargeVector &filteredHitChargeVector)
+void TrackDirectionTool::FragmentRemoval(HitChargeVector &hitChargeVector, HitChargeVector &filteredHitChargeVector, float &splitPosition)
 {
     float trackLength(0.f);
     this->GetTrackLength(hitChargeVector, trackLength);
@@ -393,7 +404,7 @@ void TrackDirectionTool::FragmentRemoval(HitChargeVector &hitChargeVector, HitCh
     std::vector<JumpObject> peakJumps;
     this->FindPeakJumps(hitChargeVector, jumpsVector);
 
-    this->AttemptFragmentRemoval(hitChargeVector, jumpsVector, filteredHitChargeVector);
+    this->AttemptFragmentRemoval(hitChargeVector, jumpsVector, filteredHitChargeVector, splitPosition);
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -429,14 +440,16 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector)
     float bodyQoverW(0.f);
     this->GetAverageQoverWTrackBody(hitChargeVector, bodyQoverW);
 
-    int nHitsToSkip(3);
+    int nHitsToSkip(3), counter(0);
     float trackEndRange(0.025);
-
+    
     HitChargeVector filteredHitChargeVector(hitChargeVector);
 
-    for (HitChargeVector::const_iterator iter = filteredHitChargeVector.begin(); iter != filteredHitChargeVector.end(); )
+    for (HitChargeVector::const_iterator iter = std::next(filteredHitChargeVector.begin(), 1); iter != std::prev(filteredHitChargeVector.end(), 1); )
     {
-        HitCharge hitCharge(*iter), nextHitCharge(*std::next(iter, 1)), plusNHitCharge(*std::next(iter, nHitsToSkip)), previousHitCharge(*std::prev(iter, 1)), minusNHitCharge(*std::prev(iter, nHitsToSkip));
+        //This counter exists so that the hit charge N hits over never points before begin() or after end(), hence the use of std::min below
+        ++counter;
+        HitCharge hitCharge(*iter), nextHitCharge(*std::next(iter, 1)), plusNHitCharge(*std::next(iter, std::min(nHitsToSkip, counter))), previousHitCharge(*std::prev(iter, 1)), minusNHitCharge(*std::prev(iter, std::min(nHitsToSkip, counter)));
 
         if (hitCharge.GetLongitudinalPosition()/trackLength <= trackEndRange || hitCharge.GetLongitudinalPosition()/trackLength >= (1.0 - trackEndRange))
         {
@@ -484,12 +497,12 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector)
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::AttemptFragmentRemoval(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector)
+void TrackDirectionTool::AttemptFragmentRemoval(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition)
 {
     DirectionFitObject beforeDirectionFitObject;
     this->FitHitChargeVector(hitChargeVector, beforeDirectionFitObject);
 
-    float beforeRemovalMinchiSquared(beforeDirectionFitObject.GetMinChiSquaredPerHit());
+    float bestSplitPosition(0.f);
 
     HitChargeVector bestHitChargeVector;
     DirectionFitObject bestDirectionFitObject(beforeDirectionFitObject);
@@ -506,13 +519,14 @@ void TrackDirectionTool::AttemptFragmentRemoval(const HitChargeVector &hitCharge
 
         if (afterDirectionFitObject.GetMinChiSquaredPerHit() < bestDirectionFitObject.GetMinChiSquaredPerHit())
         {
+            bestSplitPosition = splitPosition;
             bestHitChargeVector = largeHitCollection;
             bestDirectionFitObject = afterDirectionFitObject;
         }
     }
 
-    if (beforeRemovalMinchiSquared - bestDirectionFitObject.GetMinChiSquaredPerHit() > 2.0)
-        filteredHitChargeVector = bestHitChargeVector;
+    finalSplitPosition = bestSplitPosition;
+    filteredHitChargeVector = bestHitChargeVector;
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -600,7 +614,7 @@ void TrackDirectionTool::FindTrackEndJumps(const HitChargeVector &hitChargeVecto
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &backwardsDirectionFitObject, DirectionFitObject &forwardsDirectionFitObject, bool &splitApplied)
+void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &backwardsDirectionFitObject, DirectionFitObject &forwardsDirectionFitObject, bool &splitApplied, float &finalSplitPosition)
 {
     DirectionFitObject beforeDirectionFitObject;
     this->FitHitChargeVector(hitChargeVector, beforeDirectionFitObject);
@@ -608,7 +622,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
     backwardsDirectionFitObject = beforeDirectionFitObject;
     forwardsDirectionFitObject = beforeDirectionFitObject;
 
-    float afterSplitChiSquared(beforeDirectionFitObject.GetMinChiSquaredPerHit());
+    float afterSplitChiSquared(beforeDirectionFitObject.GetMinChiSquaredPerHit()), bestSplitPosition(0.f);
 
     std::vector<float> calorimetricSplitPositions;
     this->CreateCalorimetricSplitHitVector(hitChargeVector, calorimetricSplitPositions);
@@ -629,6 +643,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
         if (splitMinChiSquared < afterSplitChiSquared)
         {
             afterSplitChiSquared = splitMinChiSquared;
+            bestSplitPosition = splitPosition;
             outputBackwardsDirectionFitObject = backwardsTestDirectionFitObject;
             outputForwardsDirectionFitObject = forwardsTestDirectionFitObject;
         }
@@ -650,6 +665,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
     if (shouldApply)
     {
         splitApplied = true;
+        finalSplitPosition = bestSplitPosition;
         backwardsDirectionFitObject = outputBackwardsDirectionFitObject;
         forwardsDirectionFitObject = outputForwardsDirectionFitObject;
     }
@@ -1205,7 +1221,7 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
     float forwardsChiSquared(fitResult.GetForwardsChiSquared()), backwardsChiSquared(fitResult.GetBackwardsChiSquared()), nHits(fitResult.GetNHits());
     float deltaChiSquared((forwardsChiSquared - backwardsChiSquared)/nHits);
 
-    std::string fileName(m_fileName.c_str());
+    std::string fileName(m_probabilityFileName.c_str());
     ifstream inputFile(fileName);
 
     if (deltaChiSquared < -15.0 || deltaChiSquared > 15.0)
@@ -1217,7 +1233,7 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
 
     if (inputFile)
     {
-        TFile *f = new TFile(m_fileName.c_str());
+        TFile *f = new TFile(m_probabilityFileName.c_str());
 
         TH1F* forwardsDeltaChiSquared = (TH1F*)f->Get("forwardsDeltaChiSquared"); 
         TH1F* backwardsDeltaChiSquared = (TH1F*)f->Get("backwardsDeltaChiSquared"); 
@@ -1233,7 +1249,7 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
     }
     else
     {
-        std::cout << "WARNING: using pre-defined probability values calibrated on CCQEL muons, because probability.root cannot be found. Define a probability filename by including <FileName>filename.root</FileName> in the Pandora XML settings file." << std::endl;
+        //std::cout << "WARNING: using pre-defined probability values calibrated on CCQEL muons, because probability.root cannot be found. Define a probability m_probabilityFileName by including <FileName>m_probabilityFileName.root</FileName> in the Pandora XML settings file." << std::endl;
 
         std::map<float, int> deltaChiSquaredToBinMap = {
         {-15.0, 1}, {-14.625, 2}, {-14.25, 3}, {-13.875, 4}, {-13.5, 5}, {-13.125, 6}, {-12.75, 7}, {-12.375, 8}, {-12.0, 9}, {-11.625, 10},
@@ -1436,6 +1452,9 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
 
 void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW, DirectionFitObject &directionFitObject)
 {
+    if (pTargetClusterW->GetNCaloHits() < m_minClusterCaloHits || LArClusterHelper::GetLength(pTargetClusterW) < m_minClusterLength)
+        throw StatusCodeException(STATUS_CODE_FAILURE);
+
     HitChargeVector hitChargeVector;
     this->FillHitChargeVector(pTargetClusterW, hitChargeVector);
 
@@ -1475,15 +1494,18 @@ void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, Direc
 
     DirectionFitObject backwardsSplitResult, forwardsSplitResult;
     HitChargeVector filteredHitChargeVector(directionFitObject.GetHitChargeVector());
+
     bool splitApplied(false);
-    this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied);
+    float splitPosition(0.f);
+    this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied, splitPosition);
 
     if (splitApplied)
     {
         std::cout << "Applied Hypothesis #2 (Split Particle)" << std::endl;
         directionFitObject.SetHypothesis(2); 
-        directionFitObject.SetForwardsRecoHits(forwardsSplitResult.GetForwardsRecoHits());
-        directionFitObject.SetBackwardsRecoHits(backwardsSplitResult.GetBackwardsRecoHits());
+        directionFitObject.SetSplitPosition(splitPosition); 
+        directionFitObject.SetForwardsFitCharges(forwardsSplitResult.GetForwardsFitCharges());
+        directionFitObject.SetBackwardsFitCharges(backwardsSplitResult.GetBackwardsFitCharges());
     }
 }
 
@@ -1495,7 +1517,8 @@ void TrackDirectionTool::TestHypothesisThree(DirectionFitObject &directionFitObj
         return;
 
     HitChargeVector filteredHitChargeVector(directionFitObject.GetHitChargeVector()), fragmentlessHitChargeVector;
-    this->FragmentRemoval(filteredHitChargeVector, fragmentlessHitChargeVector);
+    float splitPosition(0.f);
+    this->FragmentRemoval(filteredHitChargeVector, fragmentlessHitChargeVector, splitPosition);
 
     DirectionFitObject fragmentRemovalDirectionFitObject;
     this->FitHitChargeVector(fragmentlessHitChargeVector, fragmentRemovalDirectionFitObject);
@@ -1506,6 +1529,7 @@ void TrackDirectionTool::TestHypothesisThree(DirectionFitObject &directionFitObj
     {
         std::cout << "Applied Hypothesis #3: fragment removed." << std::endl;
         directionFitObject.SetHypothesis(3); 
+        directionFitObject.SetSplitPosition(splitPosition); 
         directionFitObject = fragmentRemovalDirectionFitObject;
     }
 }
@@ -1544,9 +1568,6 @@ void TrackDirectionTool::TidyUp()
 
     globalTrackLength = (0.f);
     globalTotalHitWidth = (0.f);
-
-    globalBinWidth = (0.1);
-    globalInitialEnergy = (2000.0);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1597,10 +1618,10 @@ StatusCode TrackDirectionTool::ReadSettings(const TiXmlHandle xmlHandle)
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "MinClusterCaloHits", m_minClusterCaloHits));
 
-    float minClusterLength = std::sqrt(m_minClusterLengthSquared);
+    float minClusterLength = std::sqrt(m_minClusterLength);
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "MinClusterLength", minClusterLength));
-    m_minClusterLengthSquared = minClusterLength * minClusterLength;
+    m_minClusterLength = minClusterLength * minClusterLength;
 
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "NumberTrackEndHits", m_numberTrackEndHits));
@@ -1615,7 +1636,7 @@ StatusCode TrackDirectionTool::ReadSettings(const TiXmlHandle xmlHandle)
         "WriteTable", m_writeTable));
 
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
-        "FileName", m_fileName));
+        "FileName", m_lookupTableFileName));
 
     return STATUS_CODE_SUCCESS;
 }

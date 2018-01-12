@@ -356,28 +356,28 @@ public:
          *
          *  @return the address of the vertex
          */
-        TrackDirectionTool::HitChargeVector GetForwardsRecoHits();
+        TrackDirectionTool::HitChargeVector GetForwardsFitCharges();
 
         /**
          *  @brief  Get the address of the vertex
          *
          *  @return the address of the vertex
          */
-        TrackDirectionTool::HitChargeVector GetBackwardsRecoHits();
+        TrackDirectionTool::HitChargeVector GetBackwardsFitCharges();
 
         /**
          *  @brief  Get the address of the vertex
          *
          *  @return the address of the vertex
          */
-        void SetForwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector);
+        void SetForwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
 
         /**
          *  @brief  Set the address of the vertex
          *
          *  @return the address of the vertex
          */
-        void SetBackwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector);
+        void SetBackwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
 
         /**
          *  @brief  Get the address of the vertex
@@ -484,6 +484,20 @@ public:
          */
         int GetHypothesis();
 
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetSplitPosition(float &splitPosition);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetSplitPosition();
+
 
     private:
         HitChargeVector     m_hitchargevector;
@@ -497,6 +511,8 @@ public:
         float               m_forwardschisquared;
         float               m_backwardschisquared;
         float               m_probability;
+    
+        float               m_splitposition;
 
         float               m_beginx;
         float               m_beginy;
@@ -539,15 +555,21 @@ public:
     TwoDSlidingFitResultMap m_slidingFitResultMap;              ///< The sliding fit result map
 
     unsigned int            m_minClusterCaloHits;               ///< The min number of hits in base cluster selection method
-    float                   m_minClusterLengthSquared;          ///< The min length (squared) in base cluster selection method
+    float                   m_minClusterLength;          ///< The min length (squared) in base cluster selection method
 
     int                     m_targetParticlePDG;
     int                     m_numberTrackEndHits;
     bool                    m_enableFragmentRemoval;
     bool                    m_enableSplitting;
+
+    double                  m_tableInitialEnergy;
+    double                  m_tableStepSize;
+
     bool                    m_writeTable;
 
-    std::string             m_fileName;
+    std::string             m_lookupTableFileName;
+    std::string             m_probabilityFileName;
+    std::string             m_treeName;
 
     //-----------------------------------------------------------------------------------------------
 
@@ -567,13 +589,13 @@ public:
 
     void SetNearestNeighbourValues(HitChargeVector &innerHitChargeVector, int &nNeighboursToConsider);
 
-    void FragmentRemoval(HitChargeVector &hitChargeVector, HitChargeVector &filteredHitChargeVector);
+    void FragmentRemoval(HitChargeVector &hitChargeVector, HitChargeVector &filteredHitChargeVector, float &splitPosition);
 
     void SimpleTrackEndFilter(HitChargeVector &hitChargeVector);
 
     void TrackEndFilter(HitChargeVector &hitChargeVector);
 
-    void AttemptFragmentRemoval(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector);
+    void AttemptFragmentRemoval(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition);
 
     void FindLargestJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &leftJumps);
 
@@ -581,7 +603,7 @@ public:
 
     void FindTrackEndJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
 
-    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied);
+    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, float &finalSplitPosition);
 
     void FindKinkSize(const pandora::Cluster *const pCluster, float &splitPosition, float &kinkSize);
 
@@ -886,9 +908,12 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
     m_forwardsrecohits = (emptyVector);
     m_backwardsrecohits = (emptyVector);
     m_nhits = 0;
+    m_hypothesis = 0;
     m_meanqoverx = 0.f;
     m_forwardschisquared = 0.f;
     m_backwardschisquared = 0.f;
+    m_probability = 0.5;
+    m_splitposition = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -900,9 +925,12 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_forwardsrecohits = emptyVector;
     m_backwardsrecohits = emptyVector;
     m_nhits = numberHits;
+    m_hypothesis = 0;
     m_meanqoverx = meanQoverX;
     m_forwardschisquared = forwardsChiSquared;
     m_backwardschisquared = backwardsChiSquared;
+    m_probability = 0.5;
+    m_splitposition = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -916,6 +944,9 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_forwardschisquared(forwardsChiSquared),
     m_backwardschisquared(backwardsChiSquared)
 {
+    m_hypothesis = 0;
+    m_probability = 0.5;
+    m_splitposition = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -927,28 +958,28 @@ inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObjec
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetForwardsRecoHits()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetForwardsFitCharges()
 {
     return m_forwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetBackwardsRecoHits()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetBackwardsFitCharges()
 {
     return m_backwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetForwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector)
+inline void TrackDirectionTool::DirectionFitObject::SetForwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
 {
     m_forwardsrecohits = hitChargeVector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetBackwardsRecoHits(TrackDirectionTool::HitChargeVector hitChargeVector)
+inline void TrackDirectionTool::DirectionFitObject::SetBackwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
 {
     m_backwardsrecohits = hitChargeVector;
 }
@@ -1062,6 +1093,23 @@ inline void TrackDirectionTool::DirectionFitObject::SetHypothesis(int hypothesis
 inline int TrackDirectionTool::DirectionFitObject::GetHypothesis()
 {
     return m_hypothesis;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetSplitPosition(float &splitPosition)
+{
+    m_splitposition = splitPosition;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetSplitPosition()
+{
+    if (m_hypothesis == 1)
+        std::cout << "Neither a split nor a fragment removal has been applied. The split position is 0." << std::endl;
+
+    return m_splitposition;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

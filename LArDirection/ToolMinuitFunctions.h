@@ -153,7 +153,7 @@ void FillLookupTable(lar_content::TrackDirectionTool::LookupTable &lookupTable, 
 
     //double maxRange(lookupTable.GetMaxRange());
 
-    //remove unnecessary entries to make lookup much faster
+    //remove redundant entries to make lookup much faster
     for (std::map<int, double>::iterator it = lookupMap.begin(); it != lookupMap.end(); it++)
     {
         double n(it->first);
@@ -205,6 +205,7 @@ double GetEnergyfromLength(lar_content::TrackDirectionTool::LookupTable &lookupT
 
     double finalEnergy(leftEnergy - (((trackLength - leftLength)/(lengthDifference)) * (energyDifference)));
 
+    //very small energy values leadt to huge dE/dx values: truncate
     if (finalEnergy <= 2.0)
         return 2.0;
     else
