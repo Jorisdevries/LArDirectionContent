@@ -41,8 +41,8 @@ TrackDirectionTool::TrackDirectionTool() :
     m_minClusterCaloHits(20),
     m_minClusterLength(30.f),
     m_numberTrackEndHits(100000),
-    m_enableFragmentRemoval(false),
-    m_enableSplitting(false),
+    m_enableFragmentRemoval(true),
+    m_enableSplitting(true),
     m_tableInitialEnergy(2000.f),
     m_tableStepSize(0.1f),
     m_writeTable(false),
@@ -82,6 +82,7 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetClusterDirection(c
         this->AddToSlidingFitCache(pTargetClusterW);
         this->GetCalorimetricDirection(pTargetClusterW, finalDirectionFitObject);
         this->SetEndpoints(finalDirectionFitObject, pTargetClusterW);
+        this->SetMCTruth(finalDirectionFitObject, pTargetClusterW);
 
         this->TidyUp();
         return finalDirectionFitObject;
@@ -301,6 +302,29 @@ void TrackDirectionTool::SetEndpoints(DirectionFitObject &fitResult, const LArTr
 
     fitResult.SetBeginpoint(initialPosition);
     fitResult.SetEndpoint(endPosition);
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+void TrackDirectionTool::SetMCTruth(DirectionFitObject &fitResult, const Cluster *const pCluster)
+{
+    CartesianVector xAxis(-1.f, 0.f, 0.f), yAxis(0.f, 1.f, 0.f);
+
+    CartesianVector mcEndpoint(MCParticleHelper::GetMainMCParticle(pCluster)->GetEndpoint());
+    CartesianVector mcBeginpoint(MCParticleHelper::GetMainMCParticle(pCluster)->GetVertex());
+    CartesianVector mcDirection((mcEndpoint - mcBeginpoint).GetUnitVector());
+    float mcPhi(mcDirection.GetOpeningAngle(xAxis)), mcTheta(mcDirection.GetOpeningAngle(yAxis));
+
+    fitResult.SetMCPhi(mcPhi);
+    fitResult.SetMCTheta(mcTheta);
+
+    CartesianVector recoBeginpoint(fitResult.GetBeginpoint());
+    CartesianVector recoEndpoint(fitResult.GetEndpoint());
+
+    if ((mcBeginpoint - recoBeginpoint).GetMagnitude() < (mcBeginpoint - recoEndpoint).GetMagnitude())
+        fitResult.SetMCDirection(1);
+    else
+        fitResult.SetMCDirection(0);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

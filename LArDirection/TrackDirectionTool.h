@@ -398,6 +398,20 @@ public:
          *
          *  @return the address of the vertex
          */
+        float GetForwardsChiSquaredPerHit();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetBackwardsChiSquaredPerHit();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
         int GetNHits();
 
         /**
@@ -420,6 +434,13 @@ public:
          *  @return the address of the vertex
          */
         float GetMinChiSquaredPerHit();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetDeltaChiSquaredPerHit();
 
         /**
          *  @brief  Get the address of the vertex
@@ -498,6 +519,55 @@ public:
          */
         float GetSplitPosition();
 
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void DrawFit();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetMCDirection(int direction);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        int GetMCDirection();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetMCPhi(float &phi);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetMCPhi();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetMCTheta(float &theta);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetMCTheta();
+
 
     private:
         HitChargeVector     m_hitchargevector;
@@ -521,6 +591,10 @@ public:
         float               m_endx;
         float               m_endy;
         float               m_endz;
+
+        int                 m_mcdirection;
+        float               m_mcphi;
+        float               m_mctheta;
     };
 
     class JumpObject
@@ -582,6 +656,8 @@ public:
     void SetEndpoints(DirectionFitObject &fitResult, const pandora::Cluster *const pCluster);
 
     void SetEndpoints(DirectionFitObject &fitResult, const LArTrackStateVector &trackStateVector);
+
+    void SetMCTruth(DirectionFitObject &fitResult, const pandora::Cluster *const pCluster);
 
     void FillHitChargeVector(const pandora::Cluster *const pCluster, HitChargeVector &hitChargeVector);
 
@@ -914,6 +990,9 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
     m_backwardschisquared = 0.f;
     m_probability = 0.5;
     m_splitposition = 0.f;
+    m_mcdirection = -1;
+    m_mcphi = -1.f;
+    m_mctheta = -1.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -931,6 +1010,9 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_backwardschisquared = backwardsChiSquared;
     m_probability = 0.5;
     m_splitposition = 0.f;
+    m_mcdirection = -1;
+    m_mcphi = -1.f;
+    m_mctheta = -1.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -947,6 +1029,9 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_hypothesis = 0;
     m_probability = 0.5;
     m_splitposition = 0.f;
+    m_mcdirection = -1;
+    m_mcphi = -1.f;
+    m_mctheta = -1.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1000,6 +1085,20 @@ inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquared()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
+inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquaredPerHit()
+{
+    return m_forwardschisquared/m_nhits;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquaredPerHit()
+{
+    return m_backwardschisquared/m_nhits;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
 inline int TrackDirectionTool::DirectionFitObject::GetNHits()
 {
     return m_nhits;
@@ -1024,6 +1123,13 @@ inline float TrackDirectionTool::DirectionFitObject::GetMinChiSquared()
 inline float TrackDirectionTool::DirectionFitObject::GetMinChiSquaredPerHit()
 {
     return (m_nhits != 0 ? std::min(m_forwardschisquared, m_backwardschisquared)/m_nhits : std::numeric_limits<float>::max());
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetDeltaChiSquaredPerHit()
+{
+    return (m_nhits != 0 ? (m_forwardschisquared - m_backwardschisquared)/m_nhits : std::numeric_limits<float>::max());
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1110,6 +1216,119 @@ inline float TrackDirectionTool::DirectionFitObject::GetSplitPosition()
         std::cout << "Neither a split nor a fragment removal has been applied. The split position is 0." << std::endl;
 
     return m_splitposition;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::DrawFit()
+{
+    float firstLengthPosition((*(m_hitchargevector.begin())).GetLongitudinalPosition());
+    float lastLengthPosition((*(std::prev(m_hitchargevector.end(), 1))).GetLongitudinalPosition());
+    float trackLength(lastLengthPosition - firstLengthPosition);
+
+    HitChargeVector hitChargeVector(m_hitchargevector), forwardsRecoHits(m_forwardsrecohits), backwardsRecoHits(m_backwardsrecohits);
+
+    TGraphErrors *Hits = new TGraphErrors(hitChargeVector.size());
+    TGraphErrors *fitHits = new TGraphErrors(forwardsRecoHits.size());
+    int n(0), i(0);
+    
+    for (const HitCharge hitCharge : hitChargeVector)
+    {    
+        Hits->SetPoint(n, hitCharge.GetLongitudinalPosition(), hitCharge.GetQoverX());
+        n++; 
+    }    
+
+    if (m_forwardschisquared/m_nhits < m_backwardschisquared/m_nhits || m_hypothesis == 2)
+    {
+        for (const HitCharge hitCharge : forwardsRecoHits)
+        {    
+            fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetQoverX());
+            i++; 
+        }    
+    }
+
+    if (m_forwardschisquared/m_nhits > m_backwardschisquared/m_nhits || m_hypothesis == 2)
+    {
+        for (const HitCharge hitCharge : backwardsRecoHits)
+        {    
+            fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetQoverX());
+            i++; 
+        }  
+    }
+
+    if (hitChargeVector.size() != 0 && forwardsRecoHits.size() != 0 && backwardsRecoHits.size() != 0)
+    {    
+        TCanvas *canvas = new TCanvas("canvas", "canvas", 900, 600);
+        canvas->cd();
+        
+        Hits->GetXaxis()->SetLimits(-0.05 * trackLength, 1.05 * trackLength);
+        Hits->SetMarkerStyle(20);
+        Hits->SetMarkerSize(0.5);
+        Hits->SetMarkerColor(kBlack); 
+        
+        fitHits->SetMarkerStyle(20);
+        fitHits->SetMarkerSize(0.5);
+        fitHits->SetMarkerColor(kMagenta);
+
+        Hits->SetTitle(";Longitudinal Coordinate L_{2D} (cm); Q/w (charge/cm)"); //Bethe-Bloch Theory Fit
+        Hits->Draw("AP");
+        fitHits->Draw("Psame");
+
+        //PANDORA_MONITORING_API(Pause(this->GetPandora()));
+        canvas->SaveAs("fit.png");
+        delete canvas;
+    } 
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetMCDirection(int direction)
+{
+    m_mcdirection = direction;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline int TrackDirectionTool::DirectionFitObject::GetMCDirection()
+{
+    if (m_mcdirection == -1)
+        std::cout << "MC information not available." << std::endl;
+
+    return m_mcdirection;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetMCPhi(float &phi)
+{
+    m_mcphi = phi;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetMCPhi()
+{
+    if (m_mcphi == -1)
+        std::cout << "MC information not available." << std::endl;
+
+    return m_mcphi;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetMCTheta(float &theta)
+{
+    m_mctheta = theta;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetMCTheta()
+{
+    if (m_mctheta == -1)
+        std::cout << "MC information not available." << std::endl;
+
+    return m_mctheta;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
