@@ -31,7 +31,7 @@ const double delta0 = 0.0;
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void BinHitChargeVector(const lar_content::TrackDirectionTool::HitChargeVector &hitChargeVector, lar_content::TrackDirectionTool::HitChargeVector &binnedHitChargeVector)
+void BinHitChargeVector(lar_content::TrackDirectionTool::HitChargeVector &hitChargeVector, lar_content::TrackDirectionTool::HitChargeVector &binnedHitChargeVector)
 {
     float binSize = (hitChargeVector.size() > 50 ? (0.5 + (hitChargeVector.size() - 50) * 2.5/300) : 0.0);
 
@@ -45,7 +45,7 @@ void BinHitChargeVector(const lar_content::TrackDirectionTool::HitChargeVector &
 
     float trackLength(0.f);
 
-    for (const lar_content::TrackDirectionTool::HitCharge &hitCharge : hitChargeVector)
+    for (lar_content::TrackDirectionTool::HitCharge &hitCharge : hitChargeVector)
     {
         if (hitCharge.GetLongitudinalPosition() > trackLength)
             trackLength = hitCharge.GetLongitudinalPosition();
@@ -57,7 +57,7 @@ void BinHitChargeVector(const lar_content::TrackDirectionTool::HitChargeVector &
         float meanBinPosition(0.f), meanBinWidth(0.f);
         float meanBinCharge(0.f), sumSquaredSigmas(0.f);
 
-        for (const lar_content::TrackDirectionTool::HitCharge &hitCharge : hitChargeVector)
+        for (lar_content::TrackDirectionTool::HitCharge &hitCharge : hitChargeVector)
         {
             if (hitCharge.GetLongitudinalPosition() > i)
                 break;

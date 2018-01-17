@@ -708,13 +708,13 @@ public:
 
     void TrackEndFilter(HitChargeVector &hitChargeVector);
 
-    void AttemptFragmentRemoval(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition);
+    void AttemptFragmentRemoval(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition);
 
-    void FindLargestJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &leftJumps);
+    void FindLargestJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &leftJumps);
 
-    void FindPeakJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &peakJumps);
+    void FindPeakJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &peakJumps);
 
-    void FindTrackEndJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
+    void FindTrackEndJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
 
     void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, float &finalSplitPosition);
 
@@ -722,11 +722,11 @@ public:
 
     void CreateCalorimetricSplitHitVector(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
 
-    void SplitHitCollectionBySize(const HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &smallHitChargeVector, HitChargeVector &largeHitChargeVector);
+    void SplitHitCollectionBySize(HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &smallHitChargeVector, HitChargeVector &largeHitChargeVector);
 
-    void SplitHitCollectionByLeftRight(const HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &leftHitChargeVector, HitChargeVector &rightHitChargeVector);
+    void SplitHitCollectionByLeftRight(HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &leftHitChargeVector, HitChargeVector &rightHitChargeVector);
 
-    void GetTrackLength(const HitChargeVector &hitChargeVector, float &trackLength);
+    void GetTrackLength(HitChargeVector &hitChargeVector, float &trackLength);
 
     void GetAverageQoverWTrackBody(HitChargeVector &hitChargeVector, float &averageChargeTrackBody);
 
@@ -738,15 +738,15 @@ public:
 
     void FindBowlSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
 
-    void FitHitChargeVector(const HitChargeVector &hitChargeVector, TrackDirectionTool::DirectionFitObject &fitResult, int numberHitsToConsider=1000000);
+    void FitHitChargeVector(HitChargeVector &hitChargeVector, TrackDirectionTool::DirectionFitObject &fitResult, int numberHitsToConsider=1000000);
 
     void FitHitChargeVector(HitChargeVector &hitChargeVector1, HitChargeVector &hitChargeVector2, TrackDirectionTool::DirectionFitObject &fitResult1, TrackDirectionTool::DirectionFitObject &fitResult2, int numberHitsToConsider=1000000);
 
     void ComputeProbability(DirectionFitObject &fitResult);
 
-    void SetGlobalMinuitPreliminaries(const HitChargeVector &hitChargeVector);
+    void SetGlobalMinuitPreliminaries(HitChargeVector &hitChargeVector);
 
-    void PerformFits(const HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2);
+    void PerformFits(HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2);
 
     void GetCalorimetricDirection(const pandora::Cluster* pTargetClusterW, DirectionFitObject &finalDirectionFitObject);
 
@@ -787,7 +787,15 @@ inline TrackDirectionTool::HitCharge::HitCharge(const pandora::CaloHit* caloHit,
     m_hitwidth(hitWidth),
     m_charge(hitCharge),
     m_qoverx(hitCharge/hitWidth),
-    m_uncertainty(uncertainty)
+    m_uncertainty(uncertainty),
+    m_forwardsfitcharge(0.f),
+    m_forwardssigma(0.f),
+    m_forwardsdelta(0.f),
+    m_forwardschisquared(0.f),
+    m_backwardsfitcharge(0.f),
+    m_backwardssigma(0.f),
+    m_backwardsdelta(0.f),
+    m_backwardschisquared(0.f)
 {
 }
 
@@ -800,7 +808,15 @@ inline TrackDirectionTool::HitCharge::HitCharge() :
     m_hitwidth(0.f),
     m_charge(0.f),
     m_qoverx(0.f),
-    m_uncertainty(0.f)
+    m_uncertainty(0.f),
+    m_forwardsfitcharge(0.f),
+    m_forwardssigma(0.f),
+    m_forwardsdelta(0.f),
+    m_forwardschisquared(0.f),
+    m_backwardsfitcharge(0.f),
+    m_backwardssigma(0.f),
+    m_backwardsdelta(0.f),
+    m_backwardschisquared(0.f)
 {
 }
 
@@ -1352,7 +1368,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
     TGraphErrors *fitHits = new TGraphErrors(forwardsRecoHits.size());
     int n(0), i(0);
     
-    for (const HitCharge hitCharge : hitChargeVector)
+    for (HitCharge hitCharge : hitChargeVector)
     {    
         Hits->SetPoint(n, hitCharge.GetLongitudinalPosition(), hitCharge.GetChargeOverWidth());
         n++; 
@@ -1360,7 +1376,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
 
     if (m_forwardschisquared/m_nhits < m_backwardschisquared/m_nhits || m_hypothesis == 2)
     {
-        for (const HitCharge hitCharge : forwardsRecoHits)
+        for (HitCharge hitCharge : forwardsRecoHits)
         {    
             fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetChargeOverWidth());
             i++; 
@@ -1369,7 +1385,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
 
     if (m_forwardschisquared/m_nhits > m_backwardschisquared/m_nhits || m_hypothesis == 2)
     {
-        for (const HitCharge hitCharge : backwardsRecoHits)
+        for (HitCharge hitCharge : backwardsRecoHits)
         {    
             fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetChargeOverWidth());
             i++; 

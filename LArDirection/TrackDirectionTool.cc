@@ -446,7 +446,7 @@ void TrackDirectionTool::SimpleTrackEndFilter(HitChargeVector &hitChargeVector)
     //This piece of logic removes hits that have uncharacteristically high or low Q/w values (in tails of Q/w distribution)
     hitChargeVector.erase(
     std::remove_if(hitChargeVector.begin(), hitChargeVector.end(),
-        [](const HitCharge & hitCharge) { return hitCharge.m_intails; }),
+        [](HitCharge & hitCharge) { return hitCharge.m_intails; }),
     hitChargeVector.end());
 }
 
@@ -521,7 +521,7 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector)
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::AttemptFragmentRemoval(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition)
+void TrackDirectionTool::AttemptFragmentRemoval(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition)
 {
     DirectionFitObject beforeDirectionFitObject;
     this->FitHitChargeVector(hitChargeVector, beforeDirectionFitObject);
@@ -555,7 +555,7 @@ void TrackDirectionTool::AttemptFragmentRemoval(const HitChargeVector &hitCharge
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FindLargestJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &normalJumps)
+void TrackDirectionTool::FindLargestJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &normalJumps)
 {
     //HitChargeVector binnedHitChargeVector;
     //BinHitChargeVector(hitChargeVector, binnedHitChargeVector, 0.5);
@@ -596,11 +596,11 @@ void TrackDirectionTool::FindLargestJumps(const HitChargeVector &hitChargeVector
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FindPeakJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &peakJumps)
+void TrackDirectionTool::FindPeakJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &peakJumps)
 {
     float jumpPosition(0.f), jumpValue(0.f), currentLargestQoverW(0.f);
 
-    for (const HitCharge &hitCharge : hitChargeVector)
+    for (HitCharge &hitCharge : hitChargeVector)
     {
         if (hitCharge.GetChargeOverWidth() > currentLargestQoverW)
         {
@@ -620,7 +620,7 @@ void TrackDirectionTool::FindPeakJumps(const HitChargeVector &hitChargeVector, s
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FindTrackEndJumps(const HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps)
+void TrackDirectionTool::FindTrackEndJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps)
 {
     float trackLength(0.f);
     this->GetTrackLength(hitChargeVector, trackLength);
@@ -754,7 +754,7 @@ splitPositions.erase( unique( splitPositions.begin(), splitPositions.end() ), sp
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::SplitHitCollectionBySize(const HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &smallHitChargeVector, HitChargeVector &largeHitChargeVector)
+void TrackDirectionTool::SplitHitCollectionBySize(HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &smallHitChargeVector, HitChargeVector &largeHitChargeVector)
 {
     HitChargeVector leftHitCollection, rightHitCollection;
 
@@ -780,7 +780,7 @@ void TrackDirectionTool::SplitHitCollectionBySize(const HitChargeVector &hitChar
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::SplitHitCollectionByLeftRight(const HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &leftHitChargeVector, HitChargeVector &rightHitChargeVector)
+void TrackDirectionTool::SplitHitCollectionByLeftRight(HitChargeVector &hitChargeVector, float &splitPosition, HitChargeVector &leftHitChargeVector, HitChargeVector &rightHitChargeVector)
 {
     for (const  HitCharge &hitCharge : hitChargeVector)
     {
@@ -793,11 +793,11 @@ void TrackDirectionTool::SplitHitCollectionByLeftRight(const HitChargeVector &hi
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::GetTrackLength(const HitChargeVector &hitChargeVector, float &trackLength)
+void TrackDirectionTool::GetTrackLength(HitChargeVector &hitChargeVector, float &trackLength)
 {
     trackLength = 0.f;
 
-    for (const HitCharge &hitCharge : hitChargeVector)
+    for (HitCharge &hitCharge : hitChargeVector)
     {
         if (hitCharge.GetLongitudinalPosition() > trackLength)
             trackLength = hitCharge.GetLongitudinalPosition();
@@ -986,7 +986,7 @@ void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std:
     {
         int totalHitsLeft(0), totalHitsRight(0);
 
-        for (const HitCharge &hitCharge : hitChargeVector)
+        for (HitCharge &hitCharge : hitChargeVector)
         {
             if (std::abs(currentPosition - hitCharge.GetLongitudinalPosition()) > trackScanRange)
                 continue;
@@ -1004,7 +1004,7 @@ void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std:
         {
             float hitCountLeft(0.f), hitCountRight(0.f);
 
-            for (const HitCharge &hitCharge : hitChargeVector)
+            for (HitCharge &hitCharge : hitChargeVector)
             {
                 if (std::abs(currentPosition - hitCharge.GetLongitudinalPosition()) > trackScanRange)
                     continue;
@@ -1207,7 +1207,7 @@ void TrackDirectionTool::FindBowlSplit(HitChargeVector &hitChargeVector, std::ve
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FitHitChargeVector(const HitChargeVector &hitChargeVector, TrackDirectionTool::DirectionFitObject &fitResult, int numberHitsToConsider)
+void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector, TrackDirectionTool::DirectionFitObject &fitResult, int numberHitsToConsider)
 {
     float particleForwardsChiSquared(0.f), particleBackwardsChiSquared(0.f);
     int numberHits(std::min(2 * numberHitsToConsider, (int)hitChargeVector.size())), particleForwardsFitStatus(-1), particleBackwardsFitStatus(-1);
@@ -1311,14 +1311,14 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::SetGlobalMinuitPreliminaries(const HitChargeVector &hitChargeVector)
+void TrackDirectionTool::SetGlobalMinuitPreliminaries(HitChargeVector &hitChargeVector)
 {
     this->ClearGlobalVariables();
 
-    for (const HitCharge &hitCharge : hitChargeVector)
+    for (HitCharge &hitCharge : hitChargeVector)
         pMinuitVector->push_back(hitCharge);
 
-    for (const HitCharge &hitCharge : *pMinuitVector)
+    for (HitCharge &hitCharge : *pMinuitVector)
     {
         globalTotalHitWidth += hitCharge.GetHitWidth();
         globalTotalCharge += hitCharge.GetCharge();
@@ -1329,7 +1329,7 @@ void TrackDirectionTool::SetGlobalMinuitPreliminaries(const HitChargeVector &hit
 
 //---------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2)
+void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitChargeVector &forwardsFitPoints, HitChargeVector &backwardsFitPoints, int numberHitsToConsider, float &forwardsChiSquared, float &backwardsChiSquared, int &fitStatus1, int &fitStatus2)
 {
     this->SetGlobalMinuitPreliminaries(hitChargeVector);
 
@@ -1421,18 +1421,11 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
     double b_beta = b_L/globalTotalHitWidth;
 
     //--------------------------------------------------------------------------
+    
+    int nHitsConsidered(0);
 
-    int nImpureHits(0);
-
-    for (int vectorPosition = 0; vectorPosition < hitChargeVector.size(); vectorPosition++)
+    for (HitCharge &hitCharge : hitChargeVector)
     {
-        HitCharge hitCharge(hitChargeVector.at(vectorPosition));
-
-        bool isPure(false);
-
-        if (!isPure)
-            nImpureHits++;
-
         double f_L_i = f_Ls + (outpar[1] * hitCharge.GetLongitudinalPosition());
         double f_E_i = GetEnergyfromLength(lookupTable, f_L_i);
         double f_dEdx_2D = outpar[2] * (f_beta/f_alpha) * BetheBloch(f_E_i, particleMass);
@@ -1471,11 +1464,13 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
         hitCharge.SetBackwardsDelta(backwardsDelta);
         hitCharge.SetBackwardsChiSquared(backwardsHitChisquared);
 
-        if (!((pMinuitVector->size() >= 2 * numberHitsToConsider) && vectorPosition > numberHitsToConsider && vectorPosition < pMinuitVector->size() - numberHitsToConsider))
+        if (!((pMinuitVector->size() >= 2 * numberHitsToConsider) && nHitsConsidered > numberHitsToConsider && nHitsConsidered < pMinuitVector->size() - numberHitsToConsider))
         {
             forwardsChiSquared += forwardsHitChisquared;
             backwardsChiSquared += backwardsHitChisquared;
         }
+
+        nHitsConsidered++;
     }
 
     std::sort(forwardsFitPoints.begin(), forwardsFitPoints.end(), SortHitChargeVectorByRL);
