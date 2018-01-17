@@ -598,6 +598,13 @@ public:
          */
         float GetMCTheta();
 
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void Print();
+
 
     private:
         HitChargeVector     m_hitchargevector;
@@ -1442,6 +1449,18 @@ inline float TrackDirectionTool::DirectionFitObject::GetMCTheta()
         std::cout << "MC information not available." << std::endl;
 
     return m_mctheta;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::Print()
+{
+    std::cout << "Probability: " << m_probability << std::endl;
+    std::cout << "Vertex position: (" << m_beginx << ", " << m_beginy << ", " << m_beginz << ")" << std::endl;
+    std::cout << "Endpoint position: (" << m_endx << ", " << m_endy << ", " << m_endz << ")" << std::endl;
+    std::cout << "Best chi squared per hit: " << std::min(m_forwardschisquared, m_backwardschisquared)/m_nhits << std::endl;
+    std::cout << "Number of hits: " << m_nhits << std::endl;
+    std::cout << "Hypothesis: " << m_hypothesis << std::endl;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
