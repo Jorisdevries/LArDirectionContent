@@ -1459,6 +1459,18 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
         float forwardsHitChisquared((forwardsDelta * forwardsDelta)/(f_sigma * f_sigma));
         float backwardsHitChisquared((backwardsDelta * backwardsDelta)/(b_sigma * b_sigma));
 
+        float Q_fit_forwards(Q_fit_f), Q_fit_backwards(Q_fit_b); 
+
+        hitCharge.SetForwardsFitCharge(Q_fit_forwards); 
+        hitCharge.SetForwardsSigma(f_sigma);
+        hitCharge.SetForwardsDelta(forwardsDelta);
+        hitCharge.SetForwardsChiSquared(forwardsHitChisquared);
+
+        hitCharge.SetBackwardsFitCharge(Q_fit_backwards); 
+        hitCharge.SetBackwardsSigma(b_sigma);
+        hitCharge.SetBackwardsDelta(backwardsDelta);
+        hitCharge.SetBackwardsChiSquared(backwardsHitChisquared);
+
         if (!((pMinuitVector->size() >= 2 * numberHitsToConsider) && vectorPosition > numberHitsToConsider && vectorPosition < pMinuitVector->size() - numberHitsToConsider))
         {
             forwardsChiSquared += forwardsHitChisquared;
