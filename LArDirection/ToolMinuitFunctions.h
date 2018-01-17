@@ -262,9 +262,9 @@ void GetForwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_
         double E_i(GetEnergyfromLength(lookupTable, L_i));
 
         double dEdx_2D(par[2] * (beta/alpha) * BetheBloch(E_i, M));
-        double QoverX(hitCharge.GetQoverX());
+        double ChargeOverWidth(hitCharge.GetChargeOverWidth());
 
-        chisquared += ( (QoverX - dEdx_2D) * (QoverX - dEdx_2D) )/(hitCharge.GetUncertainty() * hitCharge.GetUncertainty());
+        chisquared += ( (ChargeOverWidth - dEdx_2D) * (ChargeOverWidth - dEdx_2D) )/(hitCharge.GetUncertainty() * hitCharge.GetUncertainty());
     }
 
     f = chisquared;
@@ -297,9 +297,9 @@ void GetBackwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int
         double E_i(GetEnergyfromLength(lookupTable, L_i));
 
         double dEdx_2D(par[2] * (beta/alpha) * BetheBloch(E_i, M));
-        double QoverX(hitCharge.GetQoverX());
+        double ChargeOverWidth(hitCharge.GetChargeOverWidth());
 
-        chisquared += ( (QoverX - dEdx_2D) * (QoverX - dEdx_2D) )/(hitCharge.GetUncertainty() * hitCharge.GetUncertainty());
+        chisquared += ( (ChargeOverWidth - dEdx_2D) * (ChargeOverWidth - dEdx_2D) )/(hitCharge.GetUncertainty() * hitCharge.GetUncertainty());
     }
 
     f = chisquared;

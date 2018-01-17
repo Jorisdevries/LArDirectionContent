@@ -120,7 +120,7 @@ public:
          *
          *  @return the address of the vertex
          */
-        float GetQoverX() const;
+        float GetChargeOverWidth() const;
 
         /**
          *  @brief  Get the address of the vertex
@@ -364,7 +364,7 @@ public:
          *  @param  pVertex the address of the vertex
          *  @param  score the score
          */
-        DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared);
+        DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared);
 
         /**
          *  @brief  Constructor
@@ -372,7 +372,7 @@ public:
          *  @param  pVertex the address of the vertex
          *  @param  score the score
          */
-        DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared);
+        DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared);
 
         /**
          *  @brief  Get the address of the vertex
@@ -477,7 +477,7 @@ public:
          *
          *  @return the address of the vertex
          */
-        float GetMeanQoverX();
+        float GetMeanChargeOverWidth();
 
         /**
          *  @brief  Set the address of the vertex
@@ -765,7 +765,7 @@ public:
     void ClearGlobalVariables();
 
     static bool SortHitChargeVectorByRL(HitCharge &hitCharge1, HitCharge &hitCharge2);
-    static bool SortHitChargeVectorByQoverX(HitCharge &hitCharge1, HitCharge &hitCharge2);
+    static bool SortHitChargeVectorByChargeOverWidth(HitCharge &hitCharge1, HitCharge &hitCharge2);
     static bool SortByDistanceToNN(HitCharge &hitCharge1, HitCharge &hitCharge2);
     static bool SortJumpVector(JumpObject &jumpObject1, JumpObject &jumpObject2);
 
@@ -834,7 +834,7 @@ inline float TrackDirectionTool::HitCharge::GetCharge() const
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::HitCharge::GetQoverX() const
+inline float TrackDirectionTool::HitCharge::GetChargeOverWidth() const
 {
     return m_qoverx;
 }
@@ -1117,7 +1117,7 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared)
+inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared)
 {
     HitChargeVector emptyVector;
     m_hitchargevector = hitChargeVector;
@@ -1125,7 +1125,7 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_backwardsrecohits = emptyVector;
     m_nhits = numberHits;
     m_hypothesis = 0;
-    m_meanqoverx = meanQoverX;
+    m_meanqoverx = meanChargeOverWidth;
     m_forwardschisquared = forwardsChiSquared;
     m_backwardschisquared = backwardsChiSquared;
     m_probability = 0.5;
@@ -1137,12 +1137,12 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanQoverX, float &forwardsChiSquared, float &backwardsChiSquared) :
+inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared) :
     m_hitchargevector(hitChargeVector),
     m_forwardsrecohits(forwardsRecoHits),
     m_backwardsrecohits(backwardsRecoHits),
     m_nhits(numberHits),
-    m_meanqoverx(meanQoverX),
+    m_meanqoverx(meanChargeOverWidth),
     m_forwardschisquared(forwardsChiSquared),
     m_backwardschisquared(backwardsChiSquared)
 {
@@ -1254,7 +1254,7 @@ inline float TrackDirectionTool::DirectionFitObject::GetDeltaChiSquaredPerHit()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetMeanQoverX()
+inline float TrackDirectionTool::DirectionFitObject::GetMeanChargeOverWidth()
 {
     return m_meanqoverx;
 }
@@ -1354,7 +1354,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
     
     for (const HitCharge hitCharge : hitChargeVector)
     {    
-        Hits->SetPoint(n, hitCharge.GetLongitudinalPosition(), hitCharge.GetQoverX());
+        Hits->SetPoint(n, hitCharge.GetLongitudinalPosition(), hitCharge.GetChargeOverWidth());
         n++; 
     }    
 
@@ -1362,7 +1362,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
     {
         for (const HitCharge hitCharge : forwardsRecoHits)
         {    
-            fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetQoverX());
+            fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetChargeOverWidth());
             i++; 
         }    
     }
@@ -1371,7 +1371,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
     {
         for (const HitCharge hitCharge : backwardsRecoHits)
         {    
-            fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetQoverX());
+            fitHits->SetPoint(i, hitCharge.GetLongitudinalPosition(), hitCharge.GetChargeOverWidth());
             i++; 
         }  
     }

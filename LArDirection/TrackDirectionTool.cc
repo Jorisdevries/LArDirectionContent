@@ -388,8 +388,8 @@ void TrackDirectionTool::SetNearestNeighbourValues(HitChargeVector &innerHitChar
     float trackLength(0.f);
     this->GetTrackLength(innerHitChargeVector, trackLength);
 
-    std::sort(innerHitChargeVector.begin(), innerHitChargeVector.end(), SortHitChargeVectorByQoverX);
-    float QoverXRange((*(std::prev(innerHitChargeVector.end(), 1))).GetQoverX() - (*innerHitChargeVector.begin()).GetQoverX());
+    std::sort(innerHitChargeVector.begin(), innerHitChargeVector.end(), SortHitChargeVectorByChargeOverWidth);
+    float ChargeOverWidthRange((*(std::prev(innerHitChargeVector.end(), 1))).GetChargeOverWidth() - (*innerHitChargeVector.begin()).GetChargeOverWidth());
 
     for (HitCharge &hitCharge1 : innerHitChargeVector)
     {
@@ -400,9 +400,9 @@ void TrackDirectionTool::SetNearestNeighbourValues(HitChargeVector &innerHitChar
             if (&hitCharge1 == &hitCharge2)
                 continue;
 
-            float QoverXDistance((trackLength/QoverXRange) * (std::abs(hitCharge1.GetQoverX() - hitCharge2.GetQoverX())));
+            float ChargeOverWidthDistance((trackLength/ChargeOverWidthRange) * (std::abs(hitCharge1.GetChargeOverWidth() - hitCharge2.GetChargeOverWidth())));
             float Ldistance(std::abs(hitCharge1.GetLongitudinalPosition() - hitCharge2.GetLongitudinalPosition()));
-            float distanceToNN(std::sqrt(QoverXDistance*QoverXDistance + Ldistance*Ldistance));
+            float distanceToNN(std::sqrt(ChargeOverWidthDistance*ChargeOverWidthDistance + Ldistance*Ldistance));
 
             distancesToNN.push_back(distanceToNN);
         }
@@ -437,10 +437,10 @@ void TrackDirectionTool::SimpleTrackEndFilter(HitChargeVector &hitChargeVector)
 {
     float lowerBound(0.9), upperBound(2.2);
 
-    while ((*(hitChargeVector.begin())).GetQoverX()/(*(std::next(hitChargeVector.begin(), 1))).GetQoverX() <= lowerBound || (*(hitChargeVector.begin())).GetQoverX()/(*(std::next(hitChargeVector.begin(), 1))).GetQoverX() >= upperBound)
+    while ((*(hitChargeVector.begin())).GetChargeOverWidth()/(*(std::next(hitChargeVector.begin(), 1))).GetChargeOverWidth() <= lowerBound || (*(hitChargeVector.begin())).GetChargeOverWidth()/(*(std::next(hitChargeVector.begin(), 1))).GetChargeOverWidth() >= upperBound)
         hitChargeVector.erase(hitChargeVector.begin());
 
-    while ((*(std::prev(hitChargeVector.end(), 1))).GetQoverX()/(*(std::prev(hitChargeVector.end(), 2))).GetQoverX() <= lowerBound || (*(std::prev(hitChargeVector.end(), 1))).GetQoverX()/(*(std::prev(hitChargeVector.end(), 2))).GetQoverX() >= upperBound)
+    while ((*(std::prev(hitChargeVector.end(), 1))).GetChargeOverWidth()/(*(std::prev(hitChargeVector.end(), 2))).GetChargeOverWidth() <= lowerBound || (*(std::prev(hitChargeVector.end(), 1))).GetChargeOverWidth()/(*(std::prev(hitChargeVector.end(), 2))).GetChargeOverWidth() >= upperBound)
         hitChargeVector.pop_back();
 
     //This piece of logic removes hits that have uncharacteristically high or low Q/w values (in tails of Q/w distribution)
@@ -477,18 +477,18 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector)
 
         if (hitCharge.GetLongitudinalPosition()/trackLength <= trackEndRange || hitCharge.GetLongitudinalPosition()/trackLength >= (1.0 - trackEndRange))
         {
-            float nearestRatio(std::max((hitCharge.GetQoverX()/previousHitCharge.GetQoverX()), (hitCharge.GetQoverX()/nextHitCharge.GetQoverX())));
-            float plusMinusNRatio(std::max((hitCharge.GetQoverX()/minusNHitCharge.GetQoverX()), (hitCharge.GetQoverX()/plusNHitCharge.GetQoverX())));
-            float distanceFromBodyQoverW(std::abs(hitCharge.GetQoverX() - bodyQoverW));
+            float nearestRatio(std::max((hitCharge.GetChargeOverWidth()/previousHitCharge.GetChargeOverWidth()), (hitCharge.GetChargeOverWidth()/nextHitCharge.GetChargeOverWidth())));
+            float plusMinusNRatio(std::max((hitCharge.GetChargeOverWidth()/minusNHitCharge.GetChargeOverWidth()), (hitCharge.GetChargeOverWidth()/plusNHitCharge.GetChargeOverWidth())));
+            float distanceFromBodyQoverW(std::abs(hitCharge.GetChargeOverWidth() - bodyQoverW));
 
-            if (previousHitCharge.GetQoverX() < 0.01)
-                nearestRatio = hitCharge.GetQoverX()/nextHitCharge.GetQoverX();
-            if (nextHitCharge.GetQoverX() < 0.01)
-                nearestRatio = hitCharge.GetQoverX()/previousHitCharge.GetQoverX();
-            if (minusNHitCharge.GetQoverX() < 0.01)
-                plusMinusNRatio = hitCharge.GetQoverX()/plusNHitCharge.GetQoverX();
-            if (plusNHitCharge.GetQoverX() < 0.01)
-                plusMinusNRatio = hitCharge.GetQoverX()/minusNHitCharge.GetQoverX();
+            if (previousHitCharge.GetChargeOverWidth() < 0.01)
+                nearestRatio = hitCharge.GetChargeOverWidth()/nextHitCharge.GetChargeOverWidth();
+            if (nextHitCharge.GetChargeOverWidth() < 0.01)
+                nearestRatio = hitCharge.GetChargeOverWidth()/previousHitCharge.GetChargeOverWidth();
+            if (minusNHitCharge.GetChargeOverWidth() < 0.01)
+                plusMinusNRatio = hitCharge.GetChargeOverWidth()/plusNHitCharge.GetChargeOverWidth();
+            if (plusNHitCharge.GetChargeOverWidth() < 0.01)
+                plusMinusNRatio = hitCharge.GetChargeOverWidth()/minusNHitCharge.GetChargeOverWidth();
 
             if (distanceFromBodyQoverW >= 4.0 || std::abs(1.0 - nearestRatio) >= 0.5 || std::abs(1.0 - plusMinusNRatio) >= 0.5)
                 iter = filteredHitChargeVector.erase(iter);
@@ -572,7 +572,7 @@ void TrackDirectionTool::FindLargestJumps(const HitChargeVector &hitChargeVector
         {
             for (int i = 0; i < searchRange; i++)
             {
-                float binJump = (std::abs(vector.at(i).GetQoverX() - vector.at(i + jumpRange).GetQoverX()));
+                float binJump = (std::abs(vector.at(i).GetChargeOverWidth() - vector.at(i + jumpRange).GetChargeOverWidth()));
                 float jumpPosition(vector.at(i + jumpRange).GetLongitudinalPosition());
                 JumpObject jumpObject(jumpPosition, binJump);
                 normalJumps.push_back(jumpObject);
@@ -580,7 +580,7 @@ void TrackDirectionTool::FindLargestJumps(const HitChargeVector &hitChargeVector
 
             for (int j = vector.size() - searchRange; j < vector.size() - jumpRange; j++)
             {
-                float binJump = (std::abs(vector.at(j).GetQoverX() - vector.at(j + jumpRange).GetQoverX()));
+                float binJump = (std::abs(vector.at(j).GetChargeOverWidth() - vector.at(j + jumpRange).GetChargeOverWidth()));
                 float jumpPosition(vector.at(j).GetLongitudinalPosition());
                 JumpObject jumpObject(jumpPosition, binJump);
 
@@ -602,9 +602,9 @@ void TrackDirectionTool::FindPeakJumps(const HitChargeVector &hitChargeVector, s
 
     for (const HitCharge &hitCharge : hitChargeVector)
     {
-        if (hitCharge.GetQoverX() > currentLargestQoverW)
+        if (hitCharge.GetChargeOverWidth() > currentLargestQoverW)
         {
-            currentLargestQoverW = hitCharge.GetQoverX();
+            currentLargestQoverW = hitCharge.GetChargeOverWidth();
             jumpPosition = hitCharge.GetLongitudinalPosition();
         }
     }
@@ -814,7 +814,7 @@ void TrackDirectionTool::GetAverageQoverWTrackBody(HitChargeVector &hitChargeVec
     for (HitCharge &hitCharge : hitChargeVector)
         tempHitChargeVector.push_back(hitCharge);
 
-    std::sort(tempHitChargeVector.begin(), tempHitChargeVector.end(), SortHitChargeVectorByQoverX);
+    std::sort(tempHitChargeVector.begin(), tempHitChargeVector.end(), SortHitChargeVectorByChargeOverWidth);
 
     int nEntries(0);
 
@@ -823,7 +823,7 @@ void TrackDirectionTool::GetAverageQoverWTrackBody(HitChargeVector &hitChargeVec
         if (q <= 0.1 * tempHitChargeVector.size() || q >= 0.6 * tempHitChargeVector.size())
             continue;
 
-        averageChargeTrackBody += tempHitChargeVector.at(q).GetQoverX();
+        averageChargeTrackBody += tempHitChargeVector.at(q).GetChargeOverWidth();
         nEntries++;
     }
 
@@ -1101,7 +1101,7 @@ void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::ve
             for (int i = 0; i <= vector.size() - (jumpRange + 1); i++)
             {
                 float combinedUncertainty = vector.at(i).GetUncertainty() + vector.at(i + jumpRange).GetUncertainty();
-                float binJump = (std::abs(vector.at(i).GetQoverX() - vector.at(i + jumpRange).GetQoverX()));
+                float binJump = (std::abs(vector.at(i).GetChargeOverWidth() - vector.at(i + jumpRange).GetChargeOverWidth()));
                 binJump /= combinedUncertainty;
                 float jumpPosition(vector.at(i + jumpRange).GetLongitudinalPosition());
                 JumpObject jumpObject(jumpPosition, binJump);
@@ -1217,7 +1217,7 @@ void TrackDirectionTool::FitHitChargeVector(const HitChargeVector &hitChargeVect
     float mean_dEdx(0.f);
     HitChargeVector thisHitChargeVector = hitChargeVector;
     for (HitCharge &hitCharge : thisHitChargeVector)
-        mean_dEdx += hitCharge.GetQoverX();
+        mean_dEdx += hitCharge.GetChargeOverWidth();
     mean_dEdx /= thisHitChargeVector.size();
 
     std::sort(thisHitChargeVector.begin(), thisHitChargeVector.end(), SortHitChargeVectorByRL);
@@ -1444,7 +1444,7 @@ void TrackDirectionTool::PerformFits(const HitChargeVector &hitChargeVector, Hit
         double Q_fit_f(f_dEdx_2D * hitCharge.GetHitWidth());
         double Q_fit_b(b_dEdx_2D * hitCharge.GetHitWidth());
 
-        float forwardsDelta(hitCharge.GetQoverX() - f_dEdx_2D), backwardsDelta(hitCharge.GetQoverX() - b_dEdx_2D);
+        float forwardsDelta(hitCharge.GetChargeOverWidth() - f_dEdx_2D), backwardsDelta(hitCharge.GetChargeOverWidth() - b_dEdx_2D);
 
         float f_sigma(std::sqrt((0.00419133 * f_dEdx_2D * f_dEdx_2D) + (0.00967141 * f_dEdx_2D))); //70%
         float b_sigma(std::sqrt((0.00419133 * b_dEdx_2D * b_dEdx_2D) + (0.00967141 * b_dEdx_2D))); //70%
@@ -1625,9 +1625,9 @@ bool TrackDirectionTool::SortHitChargeVectorByRL(HitCharge &hitCharge1, HitCharg
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-bool TrackDirectionTool::SortHitChargeVectorByQoverX(HitCharge &hitCharge1, HitCharge &hitCharge2)
+bool TrackDirectionTool::SortHitChargeVectorByChargeOverWidth(HitCharge &hitCharge1, HitCharge &hitCharge2)
 {
-    return hitCharge1.GetQoverX() < hitCharge2.GetQoverX();
+    return hitCharge1.GetChargeOverWidth() < hitCharge2.GetChargeOverWidth();
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
