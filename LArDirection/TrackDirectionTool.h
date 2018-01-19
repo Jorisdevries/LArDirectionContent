@@ -424,6 +424,20 @@ public:
         float GetBackwardsChiSquared();
 
         /**
+         *  @brief  Set the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetForwardsChiSquared(float forwardsChiSquared);
+
+        /**
+         *  @brief  Set the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetBackwardsChiSquared(float backwardsChiSquared);
+
+        /**
          *  @brief  Get the address of the vertex
          *
          *  @return the address of the vertex
@@ -603,6 +617,34 @@ public:
          *
          *  @return the address of the vertex
          */
+        void SetFRChiSquaredPerHitChange(float &chiSquaredChangePerHit);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetFRChiSquaredPerHitChange();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        void SetSplitChiSquaredPerHitChange(float &chiSquaredChangePerHit);
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
+        float GetSplitChiSquaredPerHitChange();
+
+        /**
+         *  @brief  Get the address of the vertex
+         *
+         *  @return the address of the vertex
+         */
         void Print();
 
 
@@ -632,6 +674,9 @@ public:
         int                 m_mcdirection;
         float               m_mcphi;
         float               m_mctheta;
+
+        float               m_frchisquaredperhitchange;
+        float               m_splitchisquaredperhitchange;
     };
 
     class JumpObject
@@ -706,7 +751,7 @@ public:
 
     void SimpleTrackEndFilter(HitChargeVector &hitChargeVector);
 
-    void TrackEndFilter(HitChargeVector &hitChargeVector);
+    void TrackEndFilter(HitChargeVector &hitChargeVector, DirectionFitObject &directionFitObject);
 
     void AttemptFragmentRemoval(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpsVector, HitChargeVector &filteredHitChargeVector, float &finalSplitPosition);
 
@@ -716,7 +761,7 @@ public:
 
     void FindTrackEndJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
 
-    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, float &finalSplitPosition);
+    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, float &finalSplitPosition, float &splitChiSquaredPerHitChange);
 
     void FindKinkSize(const pandora::Cluster *const pCluster, float &splitPosition, float &kinkSize);
 
@@ -1129,6 +1174,8 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
     m_mcdirection = -1;
     m_mcphi = -1.f;
     m_mctheta = -1.f;
+    m_frchisquaredperhitchange = 0.f;
+    m_splitchisquaredperhitchange = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1149,6 +1196,8 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_mcdirection = -1;
     m_mcphi = -1.f;
     m_mctheta = -1.f;
+    m_frchisquaredperhitchange = 0.f;
+    m_splitchisquaredperhitchange = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1168,6 +1217,8 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_mcdirection = -1;
     m_mcphi = -1.f;
     m_mctheta = -1.f;
+    m_frchisquaredperhitchange = 0.f;
+    m_splitchisquaredperhitchange = 0.f;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1221,6 +1272,20 @@ inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquared()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
+inline void TrackDirectionTool::DirectionFitObject::SetForwardsChiSquared(float forwardsChiSquared)
+{
+    m_forwardschisquared = forwardsChiSquared;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetBackwardsChiSquared(float backwardsChiSquared)
+{
+    m_backwardschisquared = backwardsChiSquared;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
 inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquaredPerHit()
 {
     return m_forwardschisquared/m_nhits;
@@ -1265,6 +1330,11 @@ inline float TrackDirectionTool::DirectionFitObject::GetMinChiSquaredPerHit()
 
 inline float TrackDirectionTool::DirectionFitObject::GetDeltaChiSquaredPerHit()
 {
+    if (m_hypothesis == 2)
+    {
+        //std::cout << "Split has been applied! This quantity does NOT have physical meaning!" << std::endl;
+        return 0.f;
+    }
     return (m_nhits != 0 ? (m_forwardschisquared - m_backwardschisquared)/m_nhits : std::numeric_limits<float>::max());
 }
 
@@ -1465,6 +1535,34 @@ inline float TrackDirectionTool::DirectionFitObject::GetMCTheta()
         std::cout << "MC information not available." << std::endl;
 
     return m_mctheta;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetFRChiSquaredPerHitChange(float &frchisquaredperhitchange)
+{
+    m_frchisquaredperhitchange = frchisquaredperhitchange;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetFRChiSquaredPerHitChange()
+{
+    return m_frchisquaredperhitchange;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetSplitChiSquaredPerHitChange(float &splitchisquaredperhitchange)
+{
+    m_splitchisquaredperhitchange = splitchisquaredperhitchange;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::DirectionFitObject::GetSplitChiSquaredPerHitChange()
+{
+    return m_splitchisquaredperhitchange;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

@@ -194,7 +194,7 @@ const Cluster* TrackDirectionTool::GetTargetClusterFromPFO(const ParticleFlowObj
 
     if (clusterListW.size() == 0)
     {
-        std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
+        //std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
         throw StatusCodeException(STATUS_CODE_NOT_FOUND);
     }
 
@@ -452,7 +452,7 @@ void TrackDirectionTool::SimpleTrackEndFilter(HitChargeVector &hitChargeVector)
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector)
+void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, DirectionFitObject &directionFitObject)
 {
     float trackLength(0.f);
     this->GetTrackLength(hitChargeVector, trackLength);
@@ -516,7 +516,10 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector)
         shouldApply = false;
 
     if (shouldApply)
+    {
+        directionFitObject.SetFRChiSquaredPerHitChange(ChiSquaredPerHitChange);
         hitChargeVector = filteredHitChargeVector;
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -638,7 +641,7 @@ void TrackDirectionTool::FindTrackEndJumps(HitChargeVector &hitChargeVector, std
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &backwardsDirectionFitObject, DirectionFitObject &forwardsDirectionFitObject, bool &splitApplied, float &finalSplitPosition)
+void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &backwardsDirectionFitObject, DirectionFitObject &forwardsDirectionFitObject, bool &splitApplied, float &finalSplitPosition, float &splitChiSquaredPerHitChange)
 {
     DirectionFitObject beforeDirectionFitObject;
     this->FitHitChargeVector(hitChargeVector, beforeDirectionFitObject);
@@ -692,6 +695,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
         finalSplitPosition = bestSplitPosition;
         backwardsDirectionFitObject = outputBackwardsDirectionFitObject;
         forwardsDirectionFitObject = outputForwardsDirectionFitObject;
+        splitChiSquaredPerHitChange = ChiSquaredPerHitChange;
     }
 }
 
@@ -1493,7 +1497,7 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
     this->TrackInnerFilter(hitChargeVector, filteredHitChargeVector);
 
     this->SimpleTrackEndFilter(filteredHitChargeVector);
-    this->TrackEndFilter(filteredHitChargeVector);
+    this->TrackEndFilter(filteredHitChargeVector, directionFitObject);
 
     this->FitHitChargeVector(filteredHitChargeVector, directionFitObject);
 
@@ -1511,7 +1515,7 @@ void TrackDirectionTool::TestHypothesisOne(DirectionFitObject &directionFitObjec
 
     if (likelyForwards || likelyBackwards)
     {
-        std::cout << "Applied Hypothesis #1 (Single Clean Particle)" << std::endl;
+        //std::cout << "Applied Hypothesis #1 (Single Clean Particle)" << std::endl;
         directionFitObject.SetHypothesis(1); 
     }
 }
@@ -1527,16 +1531,21 @@ void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, Direc
     HitChargeVector filteredHitChargeVector(directionFitObject.GetHitChargeVector());
 
     bool splitApplied(false);
-    float splitPosition(0.f);
-    this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied, splitPosition);
+    float splitPosition(0.f), splitChiSquaredPerHitChange(0.f);
+    this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied, splitPosition, splitChiSquaredPerHitChange);
 
     if (splitApplied)
     {
-        std::cout << "Applied Hypothesis #2 (Split Particle)" << std::endl;
+        //std::cout << "Applied Hypothesis #2 (Split Particle)" << std::endl;
         directionFitObject.SetHypothesis(2); 
         directionFitObject.SetSplitPosition(splitPosition); 
+
+        //Forwards and backwards now refer to the best fits for the forwards and backwards particles
         directionFitObject.SetForwardsFitCharges(forwardsSplitResult.GetForwardsFitCharges());
         directionFitObject.SetBackwardsFitCharges(backwardsSplitResult.GetBackwardsFitCharges());
+        directionFitObject.SetForwardsChiSquared(forwardsSplitResult.GetForwardsChiSquared());
+        directionFitObject.SetBackwardsChiSquared(backwardsSplitResult.GetBackwardsChiSquared());
+        directionFitObject.SetSplitChiSquaredPerHitChange(splitChiSquaredPerHitChange);
     }
 }
 
@@ -1558,7 +1567,7 @@ void TrackDirectionTool::TestHypothesisThree(DirectionFitObject &directionFitObj
 
     if (likelyCorrectFragmentRemoval)
     {
-        std::cout << "Applied Hypothesis #3: fragment removed." << std::endl;
+        //std::cout << "Applied Hypothesis #3: fragment removed." << std::endl;
         directionFitObject.SetHypothesis(3); 
         directionFitObject.SetSplitPosition(splitPosition); 
         directionFitObject = fragmentRemovalDirectionFitObject;
