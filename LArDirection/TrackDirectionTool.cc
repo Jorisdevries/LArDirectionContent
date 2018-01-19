@@ -308,15 +308,9 @@ void TrackDirectionTool::SetEndpoints(DirectionFitObject &fitResult, const LArTr
 
 void TrackDirectionTool::SetMCTruth(DirectionFitObject &fitResult, const Cluster *const pCluster)
 {
-    CartesianVector xAxis(-1.f, 0.f, 0.f), yAxis(0.f, 1.f, 0.f);
-
     CartesianVector mcEndpoint(MCParticleHelper::GetMainMCParticle(pCluster)->GetEndpoint());
     CartesianVector mcBeginpoint(MCParticleHelper::GetMainMCParticle(pCluster)->GetVertex());
     CartesianVector mcDirection((mcEndpoint - mcBeginpoint).GetUnitVector());
-    float mcPhi(mcDirection.GetOpeningAngle(xAxis)), mcTheta(mcDirection.GetOpeningAngle(yAxis));
-
-    fitResult.SetMCPhi(mcPhi);
-    fitResult.SetMCTheta(mcTheta);
 
     CartesianVector recoBeginpoint(fitResult.GetBeginpoint());
     CartesianVector recoEndpoint(fitResult.GetEndpoint());

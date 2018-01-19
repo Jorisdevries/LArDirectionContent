@@ -589,34 +589,6 @@ public:
          *
          *  @return the address of the vertex
          */
-        void SetMCPhi(float &phi);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        float GetMCPhi();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        void SetMCTheta(float &theta);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        float GetMCTheta();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetFRChiSquaredPerHitChange(float &chiSquaredChangePerHit);
 
         /**
@@ -1501,40 +1473,6 @@ inline int TrackDirectionTool::DirectionFitObject::GetMCDirection()
         std::cout << "MC information not available." << std::endl;
 
     return m_mcdirection;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline void TrackDirectionTool::DirectionFitObject::SetMCPhi(float &phi)
-{
-    m_mcphi = phi;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline float TrackDirectionTool::DirectionFitObject::GetMCPhi()
-{
-    if (m_mcphi == -1)
-        std::cout << "MC information not available." << std::endl;
-
-    return m_mcphi;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline void TrackDirectionTool::DirectionFitObject::SetMCTheta(float &theta)
-{
-    m_mctheta = theta;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline float TrackDirectionTool::DirectionFitObject::GetMCTheta()
-{
-    if (m_mctheta == -1)
-        std::cout << "MC information not available." << std::endl;
-
-    return m_mctheta;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
