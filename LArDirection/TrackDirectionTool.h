@@ -39,9 +39,6 @@
 namespace lar_content
 {
 
-/**
- *  @brief  TrackDirectionTool::AlgorithmTool class
- */
 class TrackDirectionTool : public pandora::AlgorithmTool
 {
 
@@ -49,119 +46,52 @@ friend void GetSplitChiSquared(Int_t &npar, Double_t *gin, Double_t &f, Double_t
 
 public:
 
-    /**
-     *  @brief  Factory class for instantiating AlgorithmTool
-     */
     class Factory : public pandora::AlgorithmToolFactory
     {
     public:
         pandora::AlgorithmTool *CreateAlgorithmTool() const;
     };
 
-    /**
-     *  @brief  Default constructor
-     */
     TrackDirectionTool();
 
-    /**
-     *  @brief  Default destructor
-     */
     ~TrackDirectionTool();
 
     class HitCharge
     {
     public:
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
-        HitCharge(const pandora::CaloHit* caloHit, float &longitudinalPosition, float &hitWidth, float &hitCharge, float &uncertainty);
 
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
+        HitCharge(const pandora::CaloHit* caloHit, float &longitudinalPosition, float &hitWidth, float &hitCharge, float &uncertainty);
         HitCharge();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         const pandora::CaloHit* GetCaloHit() const;
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetLongitudinalPosition() const;
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetHitWidth() const;
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetCharge() const;
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetChargeOverWidth() const;
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetUncertainty() const;
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetDistanceToNN(float &distance);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetDistanceToNN() const;
 
-        void SetForwardsFitCharge(float &Q_fit_f); 
-        void SetForwardsSigma(float &f_sigma);
-        void SetForwardsDelta(float &forwardsDelta);
-        void SetForwardsChiSquared(float &forwardsHitChisquared);
+        void SetToEndpointFitCharge(float &Q_fit_f); 
+        void SetToEndpointSigma(float &f_sigma);
+        void SetToEndpointDelta(float &forwardsDelta);
+        void SetToEndpointChiSquared(float &forwardsHitChisquared);
 
-        void SetBackwardsFitCharge(float &Q_fit_b); 
-        void SetBackwardsSigma(float &b_sigma);
-        void SetBackwardsDelta(float &backwardsDelta);
-        void SetBackwardsChiSquared(float &backwardsHitChisquared);
+        void SetToBeginpointFitCharge(float &Q_fit_b); 
+        void SetToBeginpointSigma(float &b_sigma);
+        void SetToBeginpointDelta(float &backwardsDelta);
+        void SetToBeginpointChiSquared(float &backwardsHitChisquared);
 
-        float GetForwardsFitCharge(); 
-        float GetForwardsSigma();
-        float GetForwardsDelta();
-        float GetForwardsChiSquared();
+        float GetToEndpointFitCharge(); 
+        float GetToEndpointSigma();
+        float GetToEndpointDelta();
+        float GetToEndpointChiSquared();
 
-        float GetBackwardsFitCharge(); 
-        float GetBackwardsSigma();
-        float GetBackwardsDelta();
-        float GetBackwardsChiSquared();
+        float GetToBeginpointFitCharge(); 
+        float GetToBeginpointSigma();
+        float GetToBeginpointDelta();
+        float GetToBeginpointChiSquared();
 
         bool                                       m_intails;
 
@@ -190,54 +120,19 @@ public:
     class KinkObject
     {
     public:
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
+
         KinkObject(float &xPosition, float &kinkAngle);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetXPosition() const;
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetKinkAngle() const;
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetWLongitudinalPosition(float &rL);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetWLongitudinalPosition() const;
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetNearestHit(HitCharge &hitCharge);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         HitCharge GetNearestHit() const;
 
     private:
@@ -252,90 +147,29 @@ public:
     class LookupTable
     {
     public:
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
+
         LookupTable();
 
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
         LookupTable(double &initialEnergy, double &binWidth);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         std::map<int, double> GetMap();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetMap(std::map<int, double> &map);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         std::map<double, int> GetReverseMap();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetReverseMap(std::map<double, int> &map);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         double GetInitialEnergy();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetInitialEnergy(double &initialEnergy);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         double GetBinWidth();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetBinWidth(double &binWidth);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetMaxRange(double &maxRange);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         double GetMaxRange();
 
     private:
@@ -350,273 +184,54 @@ public:
     {
     public:
 
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
         DirectionFitObject();
-
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
         DirectionFitObject(HitChargeVector &hitChargeVector, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared);
-
-        /**
-         *  @brief  Constructor
-         *
-         *  @param  pVertex the address of the vertex
-         *  @param  score the score
-         */
         DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared);
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         TrackDirectionTool::HitChargeVector GetHitChargeVector();
+        TrackDirectionTool::HitChargeVector GetToEndpointFitCharges();
+        TrackDirectionTool::HitChargeVector GetToBeginpointFitCharges();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        TrackDirectionTool::HitChargeVector GetForwardsFitCharges();
+        void SetToEndpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
+        void SetToBeginpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
+        float GetToEndpointChiSquared();
+        float GetToBeginpointChiSquared();
+        void SetToEndpointChiSquared(float forwardsChiSquared);
+        void SetToBeginpointChiSquared(float backwardsChiSquared);
+        float GetToEndpointChiSquaredPerHit();
+        float GetToBeginpointChiSquaredPerHit();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        TrackDirectionTool::HitChargeVector GetBackwardsFitCharges();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        void SetForwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
-
-        /**
-         *  @brief  Set the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        void SetBackwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        float GetForwardsChiSquared();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        float GetBackwardsChiSquared();
-
-        /**
-         *  @brief  Set the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        void SetForwardsChiSquared(float forwardsChiSquared);
-
-        /**
-         *  @brief  Set the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        void SetBackwardsChiSquared(float backwardsChiSquared);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        float GetForwardsChiSquaredPerHit();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
-        float GetBackwardsChiSquaredPerHit();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         int GetNHits();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         int GetDirectionEstimate();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetMinChiSquared();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetMinChiSquaredPerHit();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetDeltaChiSquaredPerHit();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetMeanChargeOverWidth();
 
-        /**
-         *  @brief  Set the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetBeginpoint(const pandora::CartesianVector &beginPoint);
-
-        /**
-         *  @brief  Set the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetEndpoint(const pandora::CartesianVector &endPoint);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         const pandora::CartesianVector GetBeginpoint();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         const pandora::CartesianVector GetEndpoint();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetProbability(float &probability);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetProbability();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetHypothesis(int hypothesis);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         int GetHypothesis();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetSplitPosition(float &splitPosition);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetSplitPosition();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void DrawFit();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetMCDirection(int direction);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         int GetMCDirection();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetFRChiSquaredPerHitChange(float &chiSquaredChangePerHit);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetFRChiSquaredPerHitChange();
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void SetSplitChiSquaredPerHitChange(float &chiSquaredChangePerHit);
-
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         float GetSplitChiSquaredPerHitChange();
 
-        /**
-         *  @brief  Get the address of the vertex
-         *
-         *  @return the address of the vertex
-         */
         void Print();
 
 
@@ -635,11 +250,11 @@ public:
     
         float               m_splitposition;
 
-        float               m_beginx;
+        float               m_beginx; //Beginpoint is defined as the track endpoint with the lowest Z coordinate
         float               m_beginy;
         float               m_beginz;
 
-        float               m_endx;
+        float               m_endx; //Endpoint is defined as the track endpoint with the highest Z coordinate
         float               m_endy;
         float               m_endz;
 
@@ -894,85 +509,85 @@ inline float TrackDirectionTool::HitCharge::GetDistanceToNN() const
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetForwardsFitCharge(float &Q_fit_f) 
+inline void TrackDirectionTool::HitCharge::SetToEndpointFitCharge(float &Q_fit_f) 
 {
     m_forwardsfitcharge = Q_fit_f;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetForwardsSigma(float &f_sigma)
+inline void TrackDirectionTool::HitCharge::SetToEndpointSigma(float &f_sigma)
 {
     m_forwardssigma = f_sigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetForwardsDelta(float &forwardsDelta)
+inline void TrackDirectionTool::HitCharge::SetToEndpointDelta(float &forwardsDelta)
 {
     m_forwardsdelta = forwardsDelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetForwardsChiSquared(float &forwardsHitChisquared)
+inline void TrackDirectionTool::HitCharge::SetToEndpointChiSquared(float &forwardsHitChisquared)
 {
     m_forwardschisquared = forwardsHitChisquared;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::HitCharge::SetBackwardsFitCharge(float &Q_fit_b) 
+inline void TrackDirectionTool::HitCharge::SetToBeginpointFitCharge(float &Q_fit_b) 
 {
     m_backwardsfitcharge = Q_fit_b;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetBackwardsSigma(float &b_sigma)
+inline void TrackDirectionTool::HitCharge::SetToBeginpointSigma(float &b_sigma)
 {
     m_backwardssigma= b_sigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetBackwardsDelta(float &backwardsDelta)
+inline void TrackDirectionTool::HitCharge::SetToBeginpointDelta(float &backwardsDelta)
 {
     m_backwardsdelta = backwardsDelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetBackwardsChiSquared(float &backwardsHitChisquared)
+inline void TrackDirectionTool::HitCharge::SetToBeginpointChiSquared(float &backwardsHitChisquared)
 {
     m_backwardschisquared = backwardsHitChisquared;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::HitCharge::GetForwardsFitCharge() 
+inline float TrackDirectionTool::HitCharge::GetToEndpointFitCharge() 
 {
     return m_forwardsfitcharge;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetForwardsSigma()
+inline float TrackDirectionTool::HitCharge::GetToEndpointSigma()
 {
     return m_forwardssigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetForwardsDelta()
+inline float TrackDirectionTool::HitCharge::GetToEndpointDelta()
 {
     return m_forwardsdelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetForwardsChiSquared()
+inline float TrackDirectionTool::HitCharge::GetToEndpointChiSquared()
 {
     return m_forwardschisquared;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::HitCharge::GetBackwardsFitCharge() 
+inline float TrackDirectionTool::HitCharge::GetToBeginpointFitCharge() 
 {
     return m_backwardsfitcharge;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetBackwardsSigma()
+inline float TrackDirectionTool::HitCharge::GetToBeginpointSigma()
 {
     return m_backwardssigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetBackwardsDelta()
+inline float TrackDirectionTool::HitCharge::GetToBeginpointDelta()
 {
     return m_backwardsdelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetBackwardsChiSquared()
+inline float TrackDirectionTool::HitCharge::GetToBeginpointChiSquared()
 {
     return m_backwardschisquared;
 }
@@ -1202,70 +817,70 @@ inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObjec
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetForwardsFitCharges()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetToEndpointFitCharges()
 {
     return m_forwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetBackwardsFitCharges()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetToBeginpointFitCharges()
 {
     return m_backwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetForwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
+inline void TrackDirectionTool::DirectionFitObject::SetToEndpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
 {
     m_forwardsrecohits = hitChargeVector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetBackwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
+inline void TrackDirectionTool::DirectionFitObject::SetToBeginpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
 {
     m_backwardsrecohits = hitChargeVector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetToEndpointChiSquared()
 {
     return m_forwardschisquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetToBeginpointChiSquared()
 {
     return m_backwardschisquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetForwardsChiSquared(float forwardsChiSquared)
+inline void TrackDirectionTool::DirectionFitObject::SetToEndpointChiSquared(float forwardsChiSquared)
 {
     m_forwardschisquared = forwardsChiSquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetBackwardsChiSquared(float backwardsChiSquared)
+inline void TrackDirectionTool::DirectionFitObject::SetToBeginpointChiSquared(float backwardsChiSquared)
 {
     m_backwardschisquared = backwardsChiSquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquaredPerHit()
+inline float TrackDirectionTool::DirectionFitObject::GetToEndpointChiSquaredPerHit()
 {
     return m_forwardschisquared/m_nhits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquaredPerHit()
+inline float TrackDirectionTool::DirectionFitObject::GetToBeginpointChiSquaredPerHit()
 {
     return m_backwardschisquared/m_nhits;
 }

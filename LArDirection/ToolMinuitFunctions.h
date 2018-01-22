@@ -237,7 +237,7 @@ double GetLengthfromEnergy(lar_content::TrackDirectionTool::LookupTable &lookupT
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void GetForwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t )
+void GetToEndpointChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t )
 {
     double Ee(par[0]), L(par[1] * globalTrackLength);
 
@@ -272,7 +272,7 @@ void GetForwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void GetBackwardsChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t)
+void GetToBeginpointChiSquared(Int_t &, Double_t *, Double_t &f, Double_t *par, Int_t)
 {
     double Ee(par[0]), L(par[1] * globalTrackLength);
 
