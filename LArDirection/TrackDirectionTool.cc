@@ -458,31 +458,24 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     float bodyQoverW(0.f);
     this->GetAverageQoverWTrackBody(hitChargeVector, bodyQoverW);
 
-    int nHitsToSkip(3), counter(0);
+    int nHitsToSkip(3), counterFromBeginning(-1), counterToEnd(hitChargeVector.size() - 1);
     float trackEndRange(0.025);
     
     HitChargeVector filteredHitChargeVector(hitChargeVector);
 
-    for (HitChargeVector::const_iterator iter = std::next(filteredHitChargeVector.begin(), 1); iter != std::prev(filteredHitChargeVector.end(), 1); )
+    for (HitChargeVector::const_iterator iter = std::next(filteredHitChargeVector.begin(), 1); iter != std::prev(filteredHitChargeVector.end(), 2); )
     {
         //This counter exists so that the hit charge N hits over never points before begin() or after end(), hence the use of std::min below
-        ++counter;
-        HitCharge hitCharge(*iter), nextHitCharge(*std::next(iter, 1)), plusNHitCharge(*std::next(iter, std::min(nHitsToSkip, counter))), previousHitCharge(*std::prev(iter, 1)), minusNHitCharge(*std::prev(iter, std::min(nHitsToSkip, counter)));
+        ++counterFromBeginning;
+        --counterToEnd;
+
+        HitCharge hitCharge(*iter), nextHitCharge(*std::next(iter, 1)), plusNHitCharge(*std::next(iter, std::min(nHitsToSkip, counterToEnd))), previousHitCharge(*std::prev(iter, 1)), minusNHitCharge(*std::prev(iter, std::min(nHitsToSkip, counterFromBeginning)));
 
         if (hitCharge.GetLongitudinalPosition()/trackLength <= trackEndRange || hitCharge.GetLongitudinalPosition()/trackLength >= (1.0 - trackEndRange))
         {
             float nearestRatio(std::max((hitCharge.GetChargeOverWidth()/previousHitCharge.GetChargeOverWidth()), (hitCharge.GetChargeOverWidth()/nextHitCharge.GetChargeOverWidth())));
             float plusMinusNRatio(std::max((hitCharge.GetChargeOverWidth()/minusNHitCharge.GetChargeOverWidth()), (hitCharge.GetChargeOverWidth()/plusNHitCharge.GetChargeOverWidth())));
             float distanceFromBodyQoverW(std::abs(hitCharge.GetChargeOverWidth() - bodyQoverW));
-
-            if (previousHitCharge.GetChargeOverWidth() < 0.01)
-                nearestRatio = hitCharge.GetChargeOverWidth()/nextHitCharge.GetChargeOverWidth();
-            if (nextHitCharge.GetChargeOverWidth() < 0.01)
-                nearestRatio = hitCharge.GetChargeOverWidth()/previousHitCharge.GetChargeOverWidth();
-            if (minusNHitCharge.GetChargeOverWidth() < 0.01)
-                plusMinusNRatio = hitCharge.GetChargeOverWidth()/plusNHitCharge.GetChargeOverWidth();
-            if (plusNHitCharge.GetChargeOverWidth() < 0.01)
-                plusMinusNRatio = hitCharge.GetChargeOverWidth()/minusNHitCharge.GetChargeOverWidth();
 
             if (distanceFromBodyQoverW >= 4.0 || std::abs(1.0 - nearestRatio) >= 0.5 || std::abs(1.0 - plusMinusNRatio) >= 0.5)
                 iter = filteredHitChargeVector.erase(iter);
@@ -500,18 +493,18 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     DirectionFitObject afterDirectionFitObject;
     this->FitHitChargeVector(filteredHitChargeVector, afterDirectionFitObject);
 
-    float ChiSquaredPerHitChange(beforeDirectionFitObject.GetMinChiSquaredPerHit() - afterDirectionFitObject.GetMinChiSquaredPerHit());
+    float chiSquaredPerHitChange(beforeDirectionFitObject.GetMinChiSquaredPerHit() - afterDirectionFitObject.GetMinChiSquaredPerHit());
     float N(beforeNumberHits);
     bool shouldApply(true);
 
-    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (8.0 - ((N/400) * 7.0)))
+    if (beforeNumberHits < 400 && chiSquaredPerHitChange < (8.0 - ((N/400) * 7.0)))
         shouldApply = false;
-    if (beforeNumberHits >= 400 && ChiSquaredPerHitChange < 1.0)
+    if (beforeNumberHits >= 400 && chiSquaredPerHitChange < 1.0)
         shouldApply = false;
 
     if (shouldApply)
     {
-        directionFitObject.SetFRChiSquaredPerHitChange(ChiSquaredPerHitChange);
+        directionFitObject.SetFRChiSquaredPerHitChange(chiSquaredPerHitChange);
         hitChargeVector = filteredHitChargeVector;
     }
 }
@@ -1224,6 +1217,8 @@ void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector, Tr
 
     DirectionFitObject finalDirectionFitObject(thisHitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHits, mean_dEdx, particleForwardsChiSquared, particleBackwardsChiSquared);
     this->ComputeProbability(finalDirectionFitObject);
+    float frChiSquaredPerHitChange(fitResult.GetFRChiSquaredPerHitChange());
+    finalDirectionFitObject.SetFRChiSquaredPerHitChange(frChiSquaredPerHitChange);
 
     fitResult = finalDirectionFitObject;
 }
