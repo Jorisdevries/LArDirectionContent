@@ -390,7 +390,7 @@ public:
 
     void AddToSlidingFitCache(const pandora::Cluster *const pCluster);
 
-    const TwoDSlidingFitResult &GetCachedSlidingDirectionFitObject(const pandora::Cluster *const pCluster) const;
+    const TwoDSlidingFitResult &GetCachedSlidingFit(const pandora::Cluster *const pCluster) const;
 
     void TidyUp();
 

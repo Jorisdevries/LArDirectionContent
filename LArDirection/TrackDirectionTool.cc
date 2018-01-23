@@ -38,7 +38,7 @@ namespace lar_content
 
 TrackDirectionTool::TrackDirectionTool() :
     m_slidingFitWindow(5),
-    m_minClusterCaloHits(20),
+    m_minClusterCaloHits(50),
     m_minClusterLength(30.f),
     m_numberTrackEndHits(100000),
     m_enableFragmentRemoval(true),
@@ -332,7 +332,7 @@ void TrackDirectionTool::FillHitChargeVector(const Cluster *const pCluster, HitC
     CaloHitList caloHitList;
     orderedCaloHitList.FillCaloHitList(caloHitList);
 
-    const TwoDSlidingFitResult &slidingDirectionFitObject(this->GetCachedSlidingDirectionFitObject(pCluster));
+    const TwoDSlidingFitResult &slidingFit(this->GetCachedSlidingFit(pCluster));
 
     for (CaloHitList::const_iterator hitIter = caloHitList.begin(), hitIterEnd = caloHitList.end(); hitIter != hitIterEnd; ++hitIter)
     {
@@ -346,7 +346,7 @@ void TrackDirectionTool::FillHitChargeVector(const Cluster *const pCluster, HitC
         caloHitEnergy /= 0.62;
 
         float rL(0.f), rT(0.f);
-        slidingDirectionFitObject.GetLocalPosition(caloHitPosition, rL, rT);
+        slidingFit.GetLocalPosition(caloHitPosition, rL, rT);
         if (rL == 0.)
             continue;
 
@@ -466,13 +466,13 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     
     HitChargeVector filteredHitChargeVector(hitChargeVector);
 
-    for (HitChargeVector::const_iterator iter = std::next(filteredHitChargeVector.begin(), 1); iter != std::prev(filteredHitChargeVector.end(), 2); )
+    for (HitChargeVector::const_iterator iter = filteredHitChargeVector.begin(); iter != filteredHitChargeVector.end(); )
     {
         //This counter exists so that the hit charge N hits over never points before begin() or after end(), hence the use of std::min below
         ++counterFromBeginning;
         --counterToEnd;
 
-        HitCharge hitCharge(*iter), nextHitCharge(*std::next(iter, 1)), plusNHitCharge(*std::next(iter, std::min(nHitsToSkip, counterToEnd))), previousHitCharge(*std::prev(iter, 1)), minusNHitCharge(*std::prev(iter, std::min(nHitsToSkip, counterFromBeginning)));
+        HitCharge hitCharge(*iter), nextHitCharge(*std::next(iter, std::min(1, counterToEnd))), plusNHitCharge(*std::next(iter, std::min(nHitsToSkip, counterToEnd))), previousHitCharge(*std::prev(iter, std::min(1, counterFromBeginning))), minusNHitCharge(*std::prev(iter, std::min(nHitsToSkip, counterFromBeginning)));
 
         if (hitCharge.GetLongitudinalPosition()/trackLength <= trackEndRange || hitCharge.GetLongitudinalPosition()/trackLength >= (1.0 - trackEndRange))
         {
@@ -480,7 +480,7 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
             float plusMinusNRatio(std::max((hitCharge.GetChargeOverWidth()/minusNHitCharge.GetChargeOverWidth()), (hitCharge.GetChargeOverWidth()/plusNHitCharge.GetChargeOverWidth())));
             float distanceFromBodyQoverW(std::abs(hitCharge.GetChargeOverWidth() - bodyQoverW));
 
-            if (distanceFromBodyQoverW >= 4.0 || std::abs(1.0 - nearestRatio) >= 0.5 || std::abs(1.0 - plusMinusNRatio) >= 0.5)
+            if (distanceFromBodyQoverW >= 4.8 || std::abs(1.0 - nearestRatio) >= 0.4 || std::abs(1.0 - plusMinusNRatio) >= 0.7)
                 iter = filteredHitChargeVector.erase(iter);
             else
                 ++iter;
@@ -500,7 +500,8 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     float N(beforeNumberHits);
     bool shouldApply(true);
 
-    if (beforeNumberHits < 400 && chiSquaredPerHitChange < (8.0 - ((N/400) * 7.0)))
+
+    if (beforeNumberHits < 400 && chiSquaredPerHitChange < (5.0 - ((N/400) * 7.0)))
         shouldApply = false;
     if (beforeNumberHits >= 400 && chiSquaredPerHitChange < 1.0)
         shouldApply = false;
@@ -674,7 +675,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
     float N(beforeNumberHits);
     bool shouldApply(true);
 
-    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (5.0 - ((N/400) * 4.0)))
+    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (2.0 - ((N/400) * 4.0)))
         shouldApply = false;
     if (beforeNumberHits >= 400 && ChiSquaredPerHitChange < 1.0)
         shouldApply = false;
@@ -695,11 +696,11 @@ void TrackDirectionTool::FindKinkSize(const Cluster* pCluster, float &splitPosit
 {
     try
     {
-        const TwoDSlidingFitResult &slidingDirectionFitObject(this->GetCachedSlidingDirectionFitObject(pCluster));
-        const LayerFitResultMap &layerFitResultMap(slidingDirectionFitObject.GetLayerFitResultMap());
+        const TwoDSlidingFitResult &slidingFit(this->GetCachedSlidingFit(pCluster));
+        const LayerFitResultMap &layerFitResultMap(slidingFit.GetLayerFitResultMap());
         const int minLayer(layerFitResultMap.begin()->first), maxLayer(layerFitResultMap.rbegin()->first);
 
-        const int nLayersHalfWindow(slidingDirectionFitObject.GetLayerFitHalfWindow());
+        const int nLayersHalfWindow(slidingFit.GetLayerFitHalfWindow());
         const int nLayersSpanned(1 + maxLayer - minLayer);
 
         if (nLayersSpanned <= 2 * nLayersHalfWindow)
@@ -709,15 +710,15 @@ void TrackDirectionTool::FindKinkSize(const Cluster* pCluster, float &splitPosit
         {
             const int iLayer(iter->first);
 
-            const float rL(slidingDirectionFitObject.GetL(iLayer));
-            const float rL1(slidingDirectionFitObject.GetL(iLayer - nLayersHalfWindow));
-            const float rL2(slidingDirectionFitObject.GetL(iLayer + nLayersHalfWindow));
+            const float rL(slidingFit.GetL(iLayer));
+            const float rL1(slidingFit.GetL(iLayer - nLayersHalfWindow));
+            const float rL2(slidingFit.GetL(iLayer + nLayersHalfWindow));
 
             CartesianVector centralPosition(0.f,0.f,0.f), firstDirection(0.f,0.f,0.f), secondDirection(0.f,0.f,0.f);
 
-            if ((STATUS_CODE_SUCCESS != slidingDirectionFitObject.GetGlobalFitPosition(rL, centralPosition)) ||
-                (STATUS_CODE_SUCCESS != slidingDirectionFitObject.GetGlobalFitDirection(rL1, firstDirection)) ||
-                (STATUS_CODE_SUCCESS != slidingDirectionFitObject.GetGlobalFitDirection(rL2, secondDirection)))
+            if ((STATUS_CODE_SUCCESS != slidingFit.GetGlobalFitPosition(rL, centralPosition)) ||
+                (STATUS_CODE_SUCCESS != slidingFit.GetGlobalFitDirection(rL1, firstDirection)) ||
+                (STATUS_CODE_SUCCESS != slidingFit.GetGlobalFitDirection(rL2, secondDirection)))
             {
                 continue;
             }
@@ -1574,15 +1575,15 @@ void TrackDirectionTool::AddToSlidingFitCache(const Cluster *const pCluster)
         return;
 
     const float slidingFitPitch(LArGeometryHelper::GetWireZPitch(this->GetPandora()));
-    const TwoDSlidingFitResult slidingDirectionFitObject(pCluster, m_slidingFitWindow, slidingFitPitch);
+    const TwoDSlidingFitResult slidingFit(pCluster, m_slidingFitWindow, slidingFitPitch);
 
-    if (!m_slidingFitResultMap.insert(TwoDSlidingFitResultMap::value_type(pCluster, slidingDirectionFitObject)).second)
+    if (!m_slidingFitResultMap.insert(TwoDSlidingFitResultMap::value_type(pCluster, slidingFit)).second)
         throw StatusCodeException(STATUS_CODE_FAILURE);
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-const TwoDSlidingFitResult &TrackDirectionTool::GetCachedSlidingDirectionFitObject(const Cluster *const pCluster) const
+const TwoDSlidingFitResult &TrackDirectionTool::GetCachedSlidingFit(const Cluster *const pCluster) const
 {
     TwoDSlidingFitResultMap::const_iterator iter = m_slidingFitResultMap.find(pCluster);
 
