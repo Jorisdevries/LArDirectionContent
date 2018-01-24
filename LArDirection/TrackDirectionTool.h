@@ -73,25 +73,25 @@ public:
         void SetDistanceToNN(float &distance);
         float GetDistanceToNN() const;
 
-        void SetToEndpointFitCharge(float &Q_fit_f); 
-        void SetToEndpointSigma(float &f_sigma);
-        void SetToEndpointDelta(float &forwardsDelta);
-        void SetToEndpointChiSquared(float &forwardsHitChisquared);
+        void SetForwardsFitCharge(float &Q_fit_f); 
+        void SetForwardsSigma(float &f_sigma);
+        void SetForwardsDelta(float &forwardsDelta);
+        void SetForwardsChiSquared(float &forwardsHitChisquared);
 
-        void SetToBeginpointFitCharge(float &Q_fit_b); 
-        void SetToBeginpointSigma(float &b_sigma);
-        void SetToBeginpointDelta(float &backwardsDelta);
-        void SetToBeginpointChiSquared(float &backwardsHitChisquared);
+        void SetBackwardsFitCharge(float &Q_fit_b); 
+        void SetBackwardsSigma(float &b_sigma);
+        void SetBackwardsDelta(float &backwardsDelta);
+        void SetBackwardsChiSquared(float &backwardsHitChisquared);
 
-        float GetToEndpointFitCharge(); 
-        float GetToEndpointSigma();
-        float GetToEndpointDelta();
-        float GetToEndpointChiSquared();
+        float GetForwardsFitCharge(); 
+        float GetForwardsSigma();
+        float GetForwardsDelta();
+        float GetForwardsChiSquared();
 
-        float GetToBeginpointFitCharge(); 
-        float GetToBeginpointSigma();
-        float GetToBeginpointDelta();
-        float GetToBeginpointChiSquared();
+        float GetBackwardsFitCharge(); 
+        float GetBackwardsSigma();
+        float GetBackwardsDelta();
+        float GetBackwardsChiSquared();
 
         bool                                       m_intails;
 
@@ -189,18 +189,19 @@ public:
         DirectionFitObject(HitChargeVector &hitChargeVector, HitChargeVector &forwardsRecoHits, HitChargeVector &backwardsRecoHits, int &numberHits, float &meanChargeOverWidth, float &forwardsChiSquared, float &backwardsChiSquared);
 
         TrackDirectionTool::HitChargeVector GetHitChargeVector();
-        TrackDirectionTool::HitChargeVector GetToEndpointFitCharges();
-        TrackDirectionTool::HitChargeVector GetToBeginpointFitCharges();
+        TrackDirectionTool::HitChargeVector GetForwardsFitCharges();
+        TrackDirectionTool::HitChargeVector GetBackwardsFitCharges();
 
-        void SetToEndpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
-        void SetToBeginpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
-        float GetToEndpointChiSquared();
-        float GetToBeginpointChiSquared();
-        void SetToEndpointChiSquared(float forwardsChiSquared);
-        void SetToBeginpointChiSquared(float backwardsChiSquared);
-        float GetToEndpointChiSquaredPerHit();
-        float GetToBeginpointChiSquaredPerHit();
+        void SetForwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
+        void SetBackwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector);
+        float GetForwardsChiSquared();
+        float GetBackwardsChiSquared();
+        void SetForwardsChiSquared(float forwardsChiSquared);
+        void SetBackwardsChiSquared(float backwardsChiSquared);
+        float GetForwardsChiSquaredPerHit();
+        float GetBackwardsChiSquaredPerHit();
 
+        void SetNHits(float numberHits);
         int GetNHits();
         int GetDirectionEstimate();
 
@@ -259,8 +260,6 @@ public:
         float               m_endz;
 
         int                 m_mcdirection;
-        float               m_mcphi;
-        float               m_mctheta;
 
         float               m_frchisquaredperhitchange;
         float               m_splitchisquaredperhitchange;
@@ -509,85 +508,85 @@ inline float TrackDirectionTool::HitCharge::GetDistanceToNN() const
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToEndpointFitCharge(float &Q_fit_f) 
+inline void TrackDirectionTool::HitCharge::SetForwardsFitCharge(float &Q_fit_f) 
 {
     m_forwardsfitcharge = Q_fit_f;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToEndpointSigma(float &f_sigma)
+inline void TrackDirectionTool::HitCharge::SetForwardsSigma(float &f_sigma)
 {
     m_forwardssigma = f_sigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToEndpointDelta(float &forwardsDelta)
+inline void TrackDirectionTool::HitCharge::SetForwardsDelta(float &forwardsDelta)
 {
     m_forwardsdelta = forwardsDelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToEndpointChiSquared(float &forwardsHitChisquared)
+inline void TrackDirectionTool::HitCharge::SetForwardsChiSquared(float &forwardsHitChisquared)
 {
     m_forwardschisquared = forwardsHitChisquared;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::HitCharge::SetToBeginpointFitCharge(float &Q_fit_b) 
+inline void TrackDirectionTool::HitCharge::SetBackwardsFitCharge(float &Q_fit_b) 
 {
     m_backwardsfitcharge = Q_fit_b;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToBeginpointSigma(float &b_sigma)
+inline void TrackDirectionTool::HitCharge::SetBackwardsSigma(float &b_sigma)
 {
     m_backwardssigma= b_sigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToBeginpointDelta(float &backwardsDelta)
+inline void TrackDirectionTool::HitCharge::SetBackwardsDelta(float &backwardsDelta)
 {
     m_backwardsdelta = backwardsDelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline void TrackDirectionTool::HitCharge::SetToBeginpointChiSquared(float &backwardsHitChisquared)
+inline void TrackDirectionTool::HitCharge::SetBackwardsChiSquared(float &backwardsHitChisquared)
 {
     m_backwardschisquared = backwardsHitChisquared;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::HitCharge::GetToEndpointFitCharge() 
+inline float TrackDirectionTool::HitCharge::GetForwardsFitCharge() 
 {
     return m_forwardsfitcharge;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetToEndpointSigma()
+inline float TrackDirectionTool::HitCharge::GetForwardsSigma()
 {
     return m_forwardssigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetToEndpointDelta()
+inline float TrackDirectionTool::HitCharge::GetForwardsDelta()
 {
     return m_forwardsdelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetToEndpointChiSquared()
+inline float TrackDirectionTool::HitCharge::GetForwardsChiSquared()
 {
     return m_forwardschisquared;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::HitCharge::GetToBeginpointFitCharge() 
+inline float TrackDirectionTool::HitCharge::GetBackwardsFitCharge() 
 {
     return m_backwardsfitcharge;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetToBeginpointSigma()
+inline float TrackDirectionTool::HitCharge::GetBackwardsSigma()
 {
     return m_backwardssigma;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetToBeginpointDelta()
+inline float TrackDirectionTool::HitCharge::GetBackwardsDelta()
 {
     return m_backwardsdelta;
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
-inline float TrackDirectionTool::HitCharge::GetToBeginpointChiSquared()
+inline float TrackDirectionTool::HitCharge::GetBackwardsChiSquared()
 {
     return m_backwardschisquared;
 }
@@ -759,8 +758,6 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
     m_probability = 0.5;
     m_splitposition = 0.f;
     m_mcdirection = -1;
-    m_mcphi = -1.f;
-    m_mctheta = -1.f;
     m_frchisquaredperhitchange = 0.f;
     m_splitchisquaredperhitchange = 0.f;
 }
@@ -781,8 +778,6 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_probability = 0.5;
     m_splitposition = 0.f;
     m_mcdirection = -1;
-    m_mcphi = -1.f;
-    m_mctheta = -1.f;
     m_frchisquaredperhitchange = 0.f;
     m_splitchisquaredperhitchange = 0.f;
 }
@@ -802,8 +797,6 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_probability = 0.5;
     m_splitposition = 0.f;
     m_mcdirection = -1;
-    m_mcphi = -1.f;
-    m_mctheta = -1.f;
     m_frchisquaredperhitchange = 0.f;
     m_splitchisquaredperhitchange = 0.f;
 }
@@ -817,72 +810,79 @@ inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObjec
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetToEndpointFitCharges()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetForwardsFitCharges()
 {
     return m_forwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetToBeginpointFitCharges()
+inline TrackDirectionTool::HitChargeVector TrackDirectionTool::DirectionFitObject::GetBackwardsFitCharges()
 {
     return m_backwardsrecohits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetToEndpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
+inline void TrackDirectionTool::DirectionFitObject::SetForwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
 {
     m_forwardsrecohits = hitChargeVector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetToBeginpointFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
+inline void TrackDirectionTool::DirectionFitObject::SetBackwardsFitCharges(TrackDirectionTool::HitChargeVector hitChargeVector)
 {
     m_backwardsrecohits = hitChargeVector;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetToEndpointChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquared()
 {
     return m_forwardschisquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetToBeginpointChiSquared()
+inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquared()
 {
     return m_backwardschisquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetToEndpointChiSquared(float forwardsChiSquared)
+inline void TrackDirectionTool::DirectionFitObject::SetForwardsChiSquared(float forwardsChiSquared)
 {
     m_forwardschisquared = forwardsChiSquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetToBeginpointChiSquared(float backwardsChiSquared)
+inline void TrackDirectionTool::DirectionFitObject::SetBackwardsChiSquared(float backwardsChiSquared)
 {
     m_backwardschisquared = backwardsChiSquared;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetToEndpointChiSquaredPerHit()
+inline float TrackDirectionTool::DirectionFitObject::GetForwardsChiSquaredPerHit()
 {
     return m_forwardschisquared/m_nhits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetToBeginpointChiSquaredPerHit()
+inline float TrackDirectionTool::DirectionFitObject::GetBackwardsChiSquaredPerHit()
 {
     return m_backwardschisquared/m_nhits;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetNHits(float numberHits)
+{
+    m_nhits = numberHits;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -917,11 +917,6 @@ inline float TrackDirectionTool::DirectionFitObject::GetMinChiSquaredPerHit()
 
 inline float TrackDirectionTool::DirectionFitObject::GetDeltaChiSquaredPerHit()
 {
-    if (m_hypothesis == 2)
-    {
-        //std::cout << "Split has been applied! This quantity does NOT have physical meaning!" << std::endl;
-        return 0.f;
-    }
     return (m_nhits != 0 ? (m_forwardschisquared - m_backwardschisquared)/m_nhits : std::numeric_limits<float>::max());
 }
 
@@ -1005,8 +1000,8 @@ inline void TrackDirectionTool::DirectionFitObject::SetSplitPosition(float &spli
 
 inline float TrackDirectionTool::DirectionFitObject::GetSplitPosition()
 {
-    if (m_hypothesis == 1)
-        std::cout << "Neither a split nor a fragment removal has been applied. The split position is 0." << std::endl;
+    //if (m_hypothesis == 1)
+    //    std::cout << "Neither a split nor a fragment removal has been applied. The split position is 0." << std::endl;
 
     return m_splitposition;
 }
@@ -1069,7 +1064,7 @@ inline void TrackDirectionTool::DirectionFitObject::DrawFit()
 
         //PANDORA_MONITORING_API(Pause(this->GetPandora()));
         canvas->SaveAs("fit.png");
-        delete canvas;
+        //delete canvas;
     } 
 }
 
@@ -1084,8 +1079,8 @@ inline void TrackDirectionTool::DirectionFitObject::SetMCDirection(int direction
 
 inline int TrackDirectionTool::DirectionFitObject::GetMCDirection()
 {
-    if (m_mcdirection == -1)
-        std::cout << "MC information not available." << std::endl;
+    //if (m_mcdirection == -1)
+    //    std::cout << "MC information not available." << std::endl;
 
     return m_mcdirection;
 }

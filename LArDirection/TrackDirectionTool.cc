@@ -101,8 +101,7 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetPfoDirection(const
     try 
     {
         const Cluster *const pClusterW = GetTargetClusterFromPFO(pPfo);
-        DirectionFitObject finalDirectionFitObject;
-        finalDirectionFitObject = GetClusterDirection(pClusterW); 
+        DirectionFitObject finalDirectionFitObject = GetClusterDirection(pClusterW);
 
         //If the PFO is 3D, then 3D endpoints should be set 
         if (LArPfoHelper::IsThreeD(pPfo))
@@ -500,8 +499,7 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     float N(beforeNumberHits);
     bool shouldApply(true);
 
-
-    if (beforeNumberHits < 400 && chiSquaredPerHitChange < (5.0 - ((N/400) * 7.0)))
+    if (beforeNumberHits < 400 && chiSquaredPerHitChange < (6.0 - ((N/400) * 7.0)))
         shouldApply = false;
     if (beforeNumberHits >= 400 && chiSquaredPerHitChange < 1.0)
         shouldApply = false;
@@ -636,7 +634,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
 {
     DirectionFitObject beforeDirectionFitObject;
     this->FitHitChargeVector(hitChargeVector, beforeDirectionFitObject);
-    DirectionFitObject outputToBeginpointDirectionFitObject(beforeDirectionFitObject), outputToEndpointDirectionFitObject(beforeDirectionFitObject);
+    DirectionFitObject outputBackwardsDirectionFitObject(beforeDirectionFitObject), outputForwardsDirectionFitObject(beforeDirectionFitObject);
     backwardsDirectionFitObject = beforeDirectionFitObject;
     forwardsDirectionFitObject = beforeDirectionFitObject;
 
@@ -653,7 +651,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
         DirectionFitObject backwardsTestDirectionFitObject, forwardsTestDirectionFitObject;
         this->FitHitChargeVector(backwardsTestHitCollection, forwardsTestHitCollection, backwardsTestDirectionFitObject, forwardsTestDirectionFitObject);
 
-        float splitMinChiSquared((backwardsTestDirectionFitObject.GetNHits() > 0 ? backwardsTestDirectionFitObject.GetToBeginpointChiSquared()/backwardsTestDirectionFitObject.GetNHits() : 0.f) + (forwardsTestDirectionFitObject.GetNHits() > 0 ? forwardsTestDirectionFitObject.GetToEndpointChiSquared()/forwardsTestDirectionFitObject.GetNHits() : 0.f));
+        float splitMinChiSquared((backwardsTestDirectionFitObject.GetNHits() > 0 ? backwardsTestDirectionFitObject.GetBackwardsChiSquared()/backwardsTestDirectionFitObject.GetNHits() : 0.f) + (forwardsTestDirectionFitObject.GetNHits() > 0 ? forwardsTestDirectionFitObject.GetForwardsChiSquared()/forwardsTestDirectionFitObject.GetNHits() : 0.f));
 
         float kinkSize(0.f);
         this->FindKinkSize(pTargetClusterW, splitPosition, kinkSize);
@@ -662,20 +660,20 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
         {
             afterSplitChiSquared = splitMinChiSquared;
             bestSplitPosition = splitPosition;
-            outputToBeginpointDirectionFitObject = backwardsTestDirectionFitObject;
-            outputToEndpointDirectionFitObject = forwardsTestDirectionFitObject;
+            outputBackwardsDirectionFitObject = backwardsTestDirectionFitObject;
+            outputForwardsDirectionFitObject = forwardsTestDirectionFitObject;
         }
     }
 
-    if (outputToBeginpointDirectionFitObject.GetNHits() == 0 || outputToEndpointDirectionFitObject.GetNHits() == 0)
+    if (outputBackwardsDirectionFitObject.GetNHits() == 0 || outputForwardsDirectionFitObject.GetNHits() == 0)
         return;
 
-    float ChiSquaredPerHitChange(beforeDirectionFitObject.GetMinChiSquaredPerHit() - (outputToBeginpointDirectionFitObject.GetToBeginpointChiSquared()/outputToBeginpointDirectionFitObject.GetNHits() + outputToEndpointDirectionFitObject.GetToEndpointChiSquared()/outputToEndpointDirectionFitObject.GetNHits()));
+    float ChiSquaredPerHitChange(beforeDirectionFitObject.GetMinChiSquaredPerHit() - (outputBackwardsDirectionFitObject.GetBackwardsChiSquared()/outputBackwardsDirectionFitObject.GetNHits() + outputForwardsDirectionFitObject.GetForwardsChiSquared()/outputForwardsDirectionFitObject.GetNHits()));
     int beforeNumberHits((int)beforeDirectionFitObject.GetHitChargeVector().size());
     float N(beforeNumberHits);
     bool shouldApply(true);
 
-    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (2.0 - ((N/400) * 4.0)))
+    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (5.0 - ((N/400) * 4.0)))
         shouldApply = false;
     if (beforeNumberHits >= 400 && ChiSquaredPerHitChange < 1.0)
         shouldApply = false;
@@ -684,8 +682,10 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
     {
         splitApplied = true;
         finalSplitPosition = bestSplitPosition;
-        backwardsDirectionFitObject = outputToBeginpointDirectionFitObject;
-        forwardsDirectionFitObject = outputToEndpointDirectionFitObject;
+        backwardsDirectionFitObject = outputBackwardsDirectionFitObject;
+        forwardsDirectionFitObject = outputForwardsDirectionFitObject;
+        std::cout << backwardsDirectionFitObject.GetDeltaChiSquaredPerHit() << std::endl;
+        std::cout << forwardsDirectionFitObject.GetDeltaChiSquaredPerHit() << std::endl;
         splitChiSquaredPerHitChange = ChiSquaredPerHitChange;
     }
 }
@@ -1204,10 +1204,10 @@ void TrackDirectionTool::FindBowlSplit(HitChargeVector &hitChargeVector, std::ve
 
 void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector, TrackDirectionTool::DirectionFitObject &fitResult, int numberHitsToConsider)
 {
-    float particleToEndpointChiSquared(0.f), particleToBeginpointChiSquared(0.f);
-    int numberHits(std::min(2 * numberHitsToConsider, (int)hitChargeVector.size())), particleToEndpointFitStatus(-1), particleToBeginpointFitStatus(-1);
+    float particleForwardsChiSquared(0.f), particleBackwardsChiSquared(0.f);
+    int numberHits(std::min(2 * numberHitsToConsider, (int)hitChargeVector.size())), particleForwardsFitStatus(-1), particleBackwardsFitStatus(-1);
     HitChargeVector forwardsFitPoints, backwardsFitPoints;
-    this->PerformFits(hitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHitsToConsider, particleToEndpointChiSquared, particleToBeginpointChiSquared, particleToEndpointFitStatus, particleToBeginpointFitStatus);
+    this->PerformFits(hitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHitsToConsider, particleForwardsChiSquared, particleBackwardsChiSquared, particleForwardsFitStatus, particleBackwardsFitStatus);
 
     float mean_dEdx(0.f);
     HitChargeVector thisHitChargeVector = hitChargeVector;
@@ -1219,7 +1219,7 @@ void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector, Tr
     std::sort(forwardsFitPoints.begin(), forwardsFitPoints.end(), SortHitChargeVectorByRL);
     std::sort(backwardsFitPoints.begin(), backwardsFitPoints.end(), SortHitChargeVectorByRL);
 
-    DirectionFitObject finalDirectionFitObject(thisHitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHits, mean_dEdx, particleToEndpointChiSquared, particleToBeginpointChiSquared);
+    DirectionFitObject finalDirectionFitObject(thisHitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHits, mean_dEdx, particleForwardsChiSquared, particleBackwardsChiSquared);
     this->ComputeProbability(finalDirectionFitObject);
     float frChiSquaredPerHitChange(fitResult.GetFRChiSquaredPerHitChange());
     finalDirectionFitObject.SetFRChiSquaredPerHitChange(frChiSquaredPerHitChange);
@@ -1239,7 +1239,7 @@ void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector1, H
 
 void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
 {
-    float forwardsChiSquared(fitResult.GetToEndpointChiSquared()), backwardsChiSquared(fitResult.GetToBeginpointChiSquared()), nHits(fitResult.GetNHits());
+    float forwardsChiSquared(fitResult.GetForwardsChiSquared()), backwardsChiSquared(fitResult.GetBackwardsChiSquared()), nHits(fitResult.GetNHits());
     float deltaChiSquared((forwardsChiSquared - backwardsChiSquared)/nHits);
 
     std::string fileName(m_probabilityFileName.c_str());
@@ -1331,7 +1331,7 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
     this->SetGlobalMinuitPreliminaries(hitChargeVector);
 
     //---------------------------------------------------------------------------------------------------
-    //ToEndpoint Fit
+    //Forwards Fit
 
     double particleMass(105.7), maxScale(globalMuonLookupTable.GetMaxRange()/globalTrackLength);
     LookupTable lookupTable = globalMuonLookupTable;
@@ -1347,7 +1347,7 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
 
     TMinuit *pMinuit = new TMinuit(nParameters);
     pMinuit->SetPrintLevel(-1);
-    pMinuit->SetFCN(GetToEndpointChiSquared);
+    pMinuit->SetFCN(GetForwardsChiSquared);
 
     for (int j = 0 ; j < nParameters ; ++j)
         pMinuit->mnparm(j, parName[j].c_str(), vstart[j], step[j], lowphysbound[j], highphysbound[j], ierflg);
@@ -1365,7 +1365,7 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
     delete pMinuit;
 
     //---------------------------------------------------------------------------------
-    //ToBeginpoint Fit
+    //Backwards Fit
 
     const int nParameters2 = 3;
     const std::string parName2[nParameters2]   = {"ENDENERGY", "SCALE", "EXTRA"};
@@ -1378,7 +1378,7 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
 
     TMinuit *pMinuit2 = new TMinuit(nParameters2);
     pMinuit2->SetPrintLevel(-1);
-    pMinuit2->SetFCN(GetToBeginpointChiSquared);
+    pMinuit2->SetFCN(GetBackwardsChiSquared);
 
     for (int j = 0 ; j < nParameters2 ; ++j)
         pMinuit2->mnparm(j, parName2[j].c_str(), vstart2[j], step2[j], lowphysbound2[j], highphysbound2[j], ierflg2);
@@ -1451,15 +1451,15 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
 
         float Q_fit_forwards(Q_fit_f), Q_fit_backwards(Q_fit_b); 
 
-        hitCharge.SetToEndpointFitCharge(Q_fit_forwards); 
-        hitCharge.SetToEndpointSigma(f_sigma);
-        hitCharge.SetToEndpointDelta(forwardsDelta);
-        hitCharge.SetToEndpointChiSquared(forwardsHitChisquared);
+        hitCharge.SetForwardsFitCharge(Q_fit_forwards); 
+        hitCharge.SetForwardsSigma(f_sigma);
+        hitCharge.SetForwardsDelta(forwardsDelta);
+        hitCharge.SetForwardsChiSquared(forwardsHitChisquared);
 
-        hitCharge.SetToBeginpointFitCharge(Q_fit_backwards); 
-        hitCharge.SetToBeginpointSigma(b_sigma);
-        hitCharge.SetToBeginpointDelta(backwardsDelta);
-        hitCharge.SetToBeginpointChiSquared(backwardsHitChisquared);
+        hitCharge.SetBackwardsFitCharge(Q_fit_backwards); 
+        hitCharge.SetBackwardsSigma(b_sigma);
+        hitCharge.SetBackwardsDelta(backwardsDelta);
+        hitCharge.SetBackwardsChiSquared(backwardsHitChisquared);
 
         if (!((pMinuitVector->size() >= 2 * numberHitsToConsider) && nHitsConsidered > numberHitsToConsider && nHitsConsidered < pMinuitVector->size() - numberHitsToConsider))
         {
@@ -1503,10 +1503,10 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
 
 void TrackDirectionTool::TestHypothesisOne(DirectionFitObject &directionFitObject)
 {
-    bool likelyToEndpoint(directionFitObject.GetDirectionEstimate() == 1 && directionFitObject.GetHitChargeVector().size() >= 400 && directionFitObject.GetToEndpointChiSquared()/directionFitObject.GetNHits() <= 1.25);
-    bool likelyToBeginpoint(directionFitObject.GetDirectionEstimate() == 0 && directionFitObject.GetHitChargeVector().size() <= 200 && directionFitObject.GetToBeginpointChiSquared()/directionFitObject.GetNHits() <= 1.25);
+    bool likelyForwards(directionFitObject.GetDirectionEstimate() == 1 && directionFitObject.GetHitChargeVector().size() >= 400 && directionFitObject.GetForwardsChiSquared()/directionFitObject.GetNHits() <= 1.25);
+    bool likelyBackwards(directionFitObject.GetDirectionEstimate() == 0 && directionFitObject.GetHitChargeVector().size() <= 200 && directionFitObject.GetBackwardsChiSquared()/directionFitObject.GetNHits() <= 1.25);
 
-    if (likelyToEndpoint || likelyToBeginpoint)
+    if (likelyForwards || likelyBackwards)
     {
         //std::cout << "Applied Hypothesis #1 (Single Clean Particle)" << std::endl;
         directionFitObject.SetHypothesis(1); 
@@ -1533,11 +1533,18 @@ void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, Direc
         directionFitObject.SetHypothesis(2); 
         directionFitObject.SetSplitPosition(splitPosition); 
 
-        //ToEndpoint and backwards now refer to the best fits for the forwards and backwards particles
-        directionFitObject.SetToEndpointFitCharges(forwardsSplitResult.GetToEndpointFitCharges());
-        directionFitObject.SetToBeginpointFitCharges(backwardsSplitResult.GetToBeginpointFitCharges());
-        directionFitObject.SetToEndpointChiSquared(forwardsSplitResult.GetToEndpointChiSquared());
-        directionFitObject.SetToBeginpointChiSquared(backwardsSplitResult.GetToBeginpointChiSquared());
+        //Forwards and backwards now refer to the best fits for the forwards and backwards particles
+        directionFitObject.SetForwardsFitCharges(forwardsSplitResult.GetForwardsFitCharges());
+        directionFitObject.SetBackwardsFitCharges(backwardsSplitResult.GetBackwardsFitCharges());
+
+        //Delta chi squared should still make sense for distributions, so take the likely muon
+        //DirectionFitObject largestFitObject(forwardsSplitResult.GetNHits() > backwardsSplitResult.GetNHits() ? forwardsSplitResult : backwardsSplitResult);
+        DirectionFitObject largestFitObject(forwardsSplitResult.GetDirectionEstimate() == forwardsSplitResult.GetMCDirection() ? forwardsSplitResult : backwardsSplitResult);
+        directionFitObject.SetForwardsChiSquared(largestFitObject.GetForwardsChiSquared());
+        directionFitObject.SetBackwardsChiSquared(largestFitObject.GetBackwardsChiSquared());
+        directionFitObject.SetNHits(largestFitObject.GetNHits());
+
+        //To create a chi squared change scatter plot
         directionFitObject.SetSplitChiSquaredPerHitChange(splitChiSquaredPerHitChange);
     }
 }
