@@ -117,32 +117,36 @@ public:
 
     typedef std::vector<HitCharge> HitChargeVector;
 
-    class KinkObject
+    class SplitObject
     {
     public:
 
-        KinkObject(float &xPosition, float &kinkAngle);
+        SplitObject();
+        SplitObject(int beforeNumerHits, int afterNumberHits, float beforeMinChiSquaredPerHit, float afterMinChiSquaredPerhit, float chiSquaredPerHitChange, float splitPosition);
 
-        float GetXPosition() const;
+        void     SetBeforeNHits(int beforeNumberHits);
+        void     SetAfterNHits(int afterNumberHits);
+        void   SetBeforeMinChiSquaredPerHit(float beforeMinChiSquaredPerHit);
+        void   SetAfterMinChiSquaredPerHit(float afterMinChiSquaredPerHit);
+        void   SetMinChiSquaredPerHitChange(float chiSquaredPerHitChange);
+        void   SetSplitPosition(float splitPosition);
 
-        float GetKinkAngle() const;
-
-        void SetWLongitudinalPosition(float &rL);
-
-        float GetWLongitudinalPosition() const;
-
-        void SetNearestHit(HitCharge &hitCharge);
-
-        HitCharge GetNearestHit() const;
+        int     GetBeforeNHits();
+        int     GetAfterNHits();
+        float   GetBeforeMinChiSquaredPerHit();
+        float   GetAfterMinChiSquaredPerHit();
+        float   GetMinChiSquaredPerHitChange();
+        float   GetSplitPosition();
+    
 
     private:
-        const float                                      m_xposition;               ///<
-        const float                                      m_kinkangle;               ///<
-        float                                            m_wrl;
-        HitCharge                                        m_hit;
+        int                                         m_beforenhits;
+        int                                         m_afternhits;
+        float                                       m_beforeminchisquaredperhit;
+        float                                       m_afterminchisquaredperhit;
+        float                                       m_chisquaredperhitchange;
+        float                                       m_splitposition;
     };
-
-    typedef std::vector<KinkObject> KinkVector;
 
     class LookupTable
     {
@@ -220,21 +224,19 @@ public:
         void SetHypothesis(int hypothesis);
         int GetHypothesis();
 
-        void SetSplitPosition(float &splitPosition);
-        float GetSplitPosition();
+        void SetSplitObject(SplitObject splitObject);
+        SplitObject GetSplitObject();
+        void SetTEFObject(SplitObject tefObject);
+        SplitObject GetTEFObject();
+        void SetFRObject(SplitObject frObject);
+        SplitObject GetFRObject();
 
         void DrawFit();
 
         void SetMCDirection(int direction);
         int GetMCDirection();
 
-        void SetFRChiSquaredPerHitChange(float &chiSquaredChangePerHit);
-        float GetFRChiSquaredPerHitChange();
-        void SetSplitChiSquaredPerHitChange(float &chiSquaredChangePerHit);
-        float GetSplitChiSquaredPerHitChange();
-
         void Print();
-
 
     private:
         HitChargeVector     m_hitchargevector;
@@ -249,8 +251,6 @@ public:
         float               m_backwardschisquared;
         float               m_probability;
     
-        float               m_splitposition;
-
         float               m_beginx; //Beginpoint is defined as the track endpoint with the lowest Z coordinate
         float               m_beginy;
         float               m_beginz;
@@ -261,8 +261,9 @@ public:
 
         int                 m_mcdirection;
 
-        float               m_frchisquaredperhitchange;
-        float               m_splitchisquaredperhitchange;
+        SplitObject         m_splitobject;
+        SplitObject         m_tefobject;
+        SplitObject         m_frobject;
     };
 
     class JumpObject
@@ -347,7 +348,7 @@ public:
 
     void FindTrackEndJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
 
-    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, float &finalSplitPosition, float &splitChiSquaredPerHitChange);
+    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, SplitObject &splitObject);
 
     void FindKinkSize(const pandora::Cluster *const pCluster, float &splitPosition, float &kinkSize);
 
@@ -592,58 +593,88 @@ inline float TrackDirectionTool::HitCharge::GetBackwardsChiSquared()
 }
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::KinkObject::KinkObject(float &xPosition, float &kinkAngle) :
-    m_xposition(xPosition),
-    m_kinkangle(kinkAngle),
-    m_wrl(0.f),
-    m_hit(HitCharge())
+inline TrackDirectionTool::SplitObject::SplitObject() :
+    m_beforenhits(0),
+    m_afternhits(0),
+    m_beforeminchisquaredperhit(0.f),
+    m_afterminchisquaredperhit(0.f),
+    m_chisquaredperhitchange(0.f),
+    m_splitposition(0.f)
 {
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::KinkObject::GetXPosition() const
+inline TrackDirectionTool::SplitObject::SplitObject(int beforeNumberHits, int afterNumberHits, float beforeMinChiSquaredPerHit, float afterMinChiSquaredPerHit, float chiSquaredPerHitChange, float splitPosition) :
+    m_beforenhits(beforeNumberHits),
+    m_afternhits(afterNumberHits),
+    m_beforeminchisquaredperhit(beforeMinChiSquaredPerHit),
+    m_afterminchisquaredperhit(afterMinChiSquaredPerHit),
+    m_chisquaredperhitchange(chiSquaredPerHitChange),
+    m_splitposition(splitPosition)
 {
-    return m_xposition;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
-
-inline float TrackDirectionTool::KinkObject::GetKinkAngle() const
+inline void     TrackDirectionTool::SplitObject::SetBeforeNHits(int beforeNumberHits)
 {
-    return m_kinkangle;
+    m_beforenhits = beforeNumberHits;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline void TrackDirectionTool::KinkObject::SetWLongitudinalPosition(float &rL)
+inline void     TrackDirectionTool::SplitObject::SetAfterNHits(int afterNumberHits)
 {
-    m_wrl = rL;
+    m_afternhits = afterNumberHits;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline float TrackDirectionTool::KinkObject::GetWLongitudinalPosition() const
+inline void   TrackDirectionTool::SplitObject::SetBeforeMinChiSquaredPerHit(float beforeMinChiSquaredPerHit)
 {
-    return m_wrl;
+    m_beforeminchisquaredperhit = beforeMinChiSquaredPerHit;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline void TrackDirectionTool::KinkObject::SetNearestHit(HitCharge &hitCharge)
+inline void   TrackDirectionTool::SplitObject::SetAfterMinChiSquaredPerHit(float afterMinChiSquaredPerHit)
 {
-    m_hit = hitCharge;
+    m_afterminchisquaredperhit = afterMinChiSquaredPerHit;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline TrackDirectionTool::HitCharge TrackDirectionTool::KinkObject::GetNearestHit() const
+inline void   TrackDirectionTool::SplitObject::SetMinChiSquaredPerHitChange(float chiSquaredPerHitChange)
 {
-    return m_hit;
+    m_chisquaredperhitchange = chiSquaredPerHitChange;
 }
 
-//------------------------------------------------------------------------------------------------------------------------------------------
-//------------------------------------------------------------------------------------------------------------------------------------------
+inline void   TrackDirectionTool::SplitObject::SetSplitPosition(float splitPosition)
+{
+    m_splitposition = splitPosition;
+}
+
+inline int     TrackDirectionTool::SplitObject::GetBeforeNHits()
+{
+    return m_beforenhits;
+}
+
+inline int     TrackDirectionTool::SplitObject::GetAfterNHits()
+{
+    return m_afternhits;
+}
+
+inline float   TrackDirectionTool::SplitObject::GetBeforeMinChiSquaredPerHit()
+{
+    return m_beforeminchisquaredperhit;
+}
+
+inline float   TrackDirectionTool::SplitObject::GetAfterMinChiSquaredPerHit()
+{
+    return m_afterminchisquaredperhit;
+}
+
+inline float   TrackDirectionTool::SplitObject::GetMinChiSquaredPerHitChange()
+{
+    return m_chisquaredperhitchange;
+}
+
+inline float   TrackDirectionTool::SplitObject::GetSplitPosition()
+{
+    return m_splitposition;
+}
 
 inline TrackDirectionTool::LookupTable::LookupTable()
 {
@@ -756,10 +787,11 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject()
     m_forwardschisquared = 0.f;
     m_backwardschisquared = 0.f;
     m_probability = 0.5;
-    m_splitposition = 0.f;
     m_mcdirection = -1;
-    m_frchisquaredperhitchange = 0.f;
-    m_splitchisquaredperhitchange = 0.f;
+    SplitObject splitObject;
+    m_splitobject = splitObject;
+    m_tefobject = splitObject;
+    m_frobject = splitObject;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -776,10 +808,11 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
     m_forwardschisquared = forwardsChiSquared;
     m_backwardschisquared = backwardsChiSquared;
     m_probability = 0.5;
-    m_splitposition = 0.f;
     m_mcdirection = -1;
-    m_frchisquaredperhitchange = 0.f;
-    m_splitchisquaredperhitchange = 0.f;
+    SplitObject splitObject;
+    m_splitobject = splitObject;
+    m_tefobject = splitObject;
+    m_frobject = splitObject;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -795,10 +828,11 @@ inline TrackDirectionTool::DirectionFitObject::DirectionFitObject(HitChargeVecto
 {
     m_hypothesis = 0;
     m_probability = 0.5;
-    m_splitposition = 0.f;
     m_mcdirection = -1;
-    m_frchisquaredperhitchange = 0.f;
-    m_splitchisquaredperhitchange = 0.f;
+    SplitObject splitObject;
+    m_splitobject = splitObject;
+    m_tefobject = splitObject;
+    m_frobject = splitObject;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -889,7 +923,7 @@ inline void TrackDirectionTool::DirectionFitObject::SetNHits(float numberHits)
 
 inline int TrackDirectionTool::DirectionFitObject::GetNHits()
 {
-    return m_nhits;
+    return m_hitchargevector.size();
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -991,19 +1025,44 @@ inline int TrackDirectionTool::DirectionFitObject::GetHypothesis()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline void TrackDirectionTool::DirectionFitObject::SetSplitPosition(float &splitPosition)
+inline void TrackDirectionTool::DirectionFitObject::SetSplitObject(TrackDirectionTool::SplitObject splitObject)
 {
-    m_splitposition = splitPosition;
+    m_splitobject = splitObject;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline float TrackDirectionTool::DirectionFitObject::GetSplitPosition()
+inline TrackDirectionTool::SplitObject TrackDirectionTool::DirectionFitObject::GetSplitObject()
 {
-    //if (m_hypothesis == 1)
-    //    std::cout << "Neither a split nor a fragment removal has been applied. The split position is 0." << std::endl;
+    return m_splitobject;
+}
 
-    return m_splitposition;
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetTEFObject(TrackDirectionTool::SplitObject tefObject)
+{
+    m_tefobject = tefObject;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline TrackDirectionTool::SplitObject TrackDirectionTool::DirectionFitObject::GetTEFObject()
+{
+    return m_tefobject;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline void TrackDirectionTool::DirectionFitObject::SetFRObject(TrackDirectionTool::SplitObject frObject)
+{
+    m_frobject = frObject;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline TrackDirectionTool::SplitObject TrackDirectionTool::DirectionFitObject::GetFRObject()
+{
+    return m_frobject;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1083,34 +1142,6 @@ inline int TrackDirectionTool::DirectionFitObject::GetMCDirection()
     //    std::cout << "MC information not available." << std::endl;
 
     return m_mcdirection;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline void TrackDirectionTool::DirectionFitObject::SetFRChiSquaredPerHitChange(float &frchisquaredperhitchange)
-{
-    m_frchisquaredperhitchange = frchisquaredperhitchange;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline float TrackDirectionTool::DirectionFitObject::GetFRChiSquaredPerHitChange()
-{
-    return m_frchisquaredperhitchange;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline void TrackDirectionTool::DirectionFitObject::SetSplitChiSquaredPerHitChange(float &splitchisquaredperhitchange)
-{
-    m_splitchisquaredperhitchange = splitchisquaredperhitchange;
-}
-
-//------------------------------------------------------------------------------------------------------------------------------------------
-
-inline float TrackDirectionTool::DirectionFitObject::GetSplitChiSquaredPerHitChange()
-{
-    return m_splitchisquaredperhitchange;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
