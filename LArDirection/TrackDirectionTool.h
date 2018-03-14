@@ -318,7 +318,7 @@ public:
 
     void SetLookupTable();
 
-    const pandora::Cluster* GetTargetClusterFromPFO(const pandora::ParticleFlowObject* PFO);
+    const pandora::Cluster* GetTargetClusterFromPFO(const pandora::ParticleFlowObject* PFO, const LArTrackStateVector &trackStateVector);
 
     void ReadLookupTableFromTree(LookupTable &lookupTable);
 

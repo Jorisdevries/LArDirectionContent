@@ -37,9 +37,9 @@ namespace lar_content
 {
 
 TrackDirectionTool::TrackDirectionTool() :
-    m_slidingFitWindow(5),
+    m_slidingFitWindow(20),
     m_minClusterCaloHits(50),
-    m_minClusterLength(30.f),
+    m_minClusterLength(10.f),
     m_numberTrackEndHits(100000),
     m_enableFragmentRemoval(true),
     m_enableSplitting(true),
@@ -68,11 +68,13 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetClusterDirection(c
 {
     try
     {
+        /*
         if (LArClusterHelper::GetClusterHitType(pTargetClusterW) != TPC_VIEW_W)
         {
             std::cout << "ERROR: cluster is not in the W view!" << std::endl;
             throw StatusCodeException(STATUS_CODE_FAILURE);
         }
+        */
 
         if (globalMuonLookupTable.GetMap().empty())
             this->SetLookupTable();
@@ -82,7 +84,7 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetClusterDirection(c
         this->AddToSlidingFitCache(pTargetClusterW);
         this->GetCalorimetricDirection(pTargetClusterW, finalDirectionFitObject);
         this->SetEndpoints(finalDirectionFitObject, pTargetClusterW);
-        this->SetMCTruth(finalDirectionFitObject, pTargetClusterW);
+        //this->SetMCTruth(finalDirectionFitObject, pTargetClusterW);
 
         this->TidyUp();
         return finalDirectionFitObject;
@@ -100,16 +102,24 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetPfoDirection(const
 {
     try 
     {
-        const Cluster *const pClusterW = GetTargetClusterFromPFO(pPfo);
+        const pandora::Vertex *const pVertex = LArPfoHelper::GetVertex(pPfo);
+        const float slidingFitPitch(LArGeometryHelper::GetWireZPitch(this->GetPandora()));
+        LArTrackStateVector trackStateVector;
+        LArPfoHelper::GetSlidingFitTrajectory(pPfo, pVertex, m_slidingFitWindow, slidingFitPitch, trackStateVector);
+
+        const Cluster *const pClusterW = GetTargetClusterFromPFO(pPfo, trackStateVector);
+
+        if (pClusterW->GetNCaloHits() <= m_minClusterCaloHits)
+        {
+            //std::cout << "ERROR: PFO is tiny!" << std::endl;
+            throw StatusCodeException(STATUS_CODE_NOT_FOUND);
+        }
+
         DirectionFitObject finalDirectionFitObject = GetClusterDirection(pClusterW);
 
         //If the PFO is 3D, then 3D endpoints should be set 
         if (LArPfoHelper::IsThreeD(pPfo))
         {
-            const pandora::Vertex *const pVertex = LArPfoHelper::GetVertex(pPfo);
-            const float slidingFitPitch(LArGeometryHelper::GetWireZPitch(this->GetPandora()));
-            LArTrackStateVector trackStateVector;
-            LArPfoHelper::GetSlidingFitTrajectory(pPfo, pVertex, m_slidingFitWindow, slidingFitPitch, trackStateVector);
             SetEndpoints(finalDirectionFitObject, trackStateVector);
         }
 
@@ -185,32 +195,65 @@ void TrackDirectionTool::SetLookupTable()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-const Cluster* TrackDirectionTool::GetTargetClusterFromPFO(const ParticleFlowObject* pPfo)
+const Cluster* TrackDirectionTool::GetTargetClusterFromPFO(const ParticleFlowObject* pPfo, const LArTrackStateVector &trackStateVector)
 {
-    HitType hitType(TPC_VIEW_W);
+    //HitType hitType(TPC_VIEW_W);
     ClusterList clusterListW;
-    LArPfoHelper::GetClusters(pPfo, hitType, clusterListW);
+    LArPfoHelper::GetTwoDClusterList(pPfo, clusterListW);
 
+    /*
     if (clusterListW.size() == 0)
+    {
+        std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
+        throw StatusCodeException(STATUS_CODE_NOT_FOUND);
+    }
+    */
+
+    TrackState firstTrackState(*(trackStateVector.begin())), lastTrackState(trackStateVector.back());
+    const pandora::CartesianVector initialPosition(firstTrackState.GetPosition());
+    const pandora::CartesianVector endPosition(lastTrackState.GetPosition());
+
+    const pandora::CartesianVector lowZVector(initialPosition.GetZ() < endPosition.GetZ() ? initialPosition : endPosition);
+    const pandora::CartesianVector highZVector(initialPosition.GetZ() > endPosition.GetZ() ? initialPosition : endPosition);
+
+    float currentEndpointDistance(std::numeric_limits<float>::max());
+    ClusterList bestClusterList;
+
+    for (const Cluster *const pCluster : clusterListW)
+    {    
+        CartesianVector innerCoordinate(0.f, 0.f, 0.f), outerCoordinate(0.f, 0.f, 0.f);
+        LArClusterHelper::GetExtremalCoordinates(pCluster, innerCoordinate, outerCoordinate);
+
+        const pandora::CartesianVector lowZClusterVector(innerCoordinate.GetZ() < outerCoordinate.GetZ() ? innerCoordinate : outerCoordinate);
+        const pandora::CartesianVector highZClusterVector(innerCoordinate.GetZ() > outerCoordinate.GetZ() ? innerCoordinate : outerCoordinate);
+
+        /*
+        std::cout << "Cluster inner coordinates: (" << innerCoordinate.GetX() << ", " << innerCoordinate.GetY() << ", " << innerCoordinate.GetZ() << ")" << std::endl;
+        std::cout << "Cluster outer coordinates: (" << outerCoordinate.GetX() << ", " << outerCoordinate.GetY() << ", " << outerCoordinate.GetZ() << ")" << std::endl;
+        std::cout << "Track low Z coordinates: (" << lowZVector.GetX() << ", " << lowZVector.GetY() << ", " << lowZVector.GetZ() << ")" << std::endl;
+        std::cout << "Track high Z coordinates: (" << highZVector.GetX() << ", " << highZVector.GetY() << ", " << highZVector.GetZ() << ")" << std::endl;
+        */
+
+        if (innerCoordinate.GetY() != 0 || outerCoordinate.GetY() != 0) 
+            continue;
+
+        float endpointDistance(std::abs(lowZVector.GetZ() - lowZClusterVector.GetZ()));
+
+        if (endpointDistance < currentEndpointDistance)
+        {    
+            currentEndpointDistance = endpointDistance; 
+            bestClusterList.clear();
+            bestClusterList.push_back(pCluster);
+        }    
+    } 
+
+    if (bestClusterList.size() == 0)
     {
         //std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
         throw StatusCodeException(STATUS_CODE_NOT_FOUND);
     }
 
-    float currentLength(std::numeric_limits<float>::min());
-    ClusterList longestClusterList;
-
-    for (const Cluster *const pCluster : clusterListW)
-    {    
-        if (LArClusterHelper::GetLength(pCluster) > currentLength)
-        {    
-            currentLength = LArClusterHelper::GetLength(pCluster);
-            longestClusterList.clear();
-            longestClusterList.push_back(pCluster);
-        }    
-    } 
-
-    const Cluster *const pCluster(*(longestClusterList.begin())); 
+    const Cluster *const pCluster(*(bestClusterList.begin())); 
     return pCluster;
 }
 
@@ -295,7 +338,7 @@ void TrackDirectionTool::SetEndpoints(DirectionFitObject &fitResult, const Clust
 
 void TrackDirectionTool::SetEndpoints(DirectionFitObject &fitResult, const LArTrackStateVector &trackStateVector)
 {
-    TrackState firstTrackState(*(trackStateVector.begin())), lastTrackState(*(std::prev(trackStateVector.end(), 1)));
+    TrackState firstTrackState(*(trackStateVector.begin())), lastTrackState(trackStateVector.back());
     const pandora::CartesianVector initialPosition(firstTrackState.GetPosition());
     const pandora::CartesianVector endPosition(lastTrackState.GetPosition());
 
@@ -505,17 +548,17 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     if (beforeNumberHits >= 400 && chiSquaredPerHitChange < 1.0)
         shouldApply = false;
 
+    SplitObject tefObject;
+    tefObject.SetSplitPosition(0.f);
+    tefObject.SetBeforeMinChiSquaredPerHit(tefBeforeChiSquaredPerHit);
+    tefObject.SetAfterMinChiSquaredPerHit(tefAfterChiSquaredPerHit);
+    tefObject.SetMinChiSquaredPerHitChange(tefBeforeChiSquaredPerHit - tefAfterChiSquaredPerHit);
+    tefObject.SetBeforeNHits(hitChargeVector.size());
+    tefObject.SetAfterNHits(filteredHitChargeVector.size());
+    directionFitObject.SetTEFObject(tefObject);
+
     if (shouldApply)
     {
-        SplitObject tefObject;
-        tefObject.SetSplitPosition(0.f);
-        tefObject.SetBeforeMinChiSquaredPerHit(tefBeforeChiSquaredPerHit);
-        tefObject.SetAfterMinChiSquaredPerHit(tefAfterChiSquaredPerHit);
-        tefObject.SetMinChiSquaredPerHitChange(tefBeforeChiSquaredPerHit - tefAfterChiSquaredPerHit);
-        tefObject.SetBeforeNHits(hitChargeVector.size());
-        tefObject.SetAfterNHits(filteredHitChargeVector.size());
-        directionFitObject.SetTEFObject(tefObject);
-
         hitChargeVector = filteredHitChargeVector;
     }
 }
@@ -1448,8 +1491,8 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
 
         float forwardsDelta(hitCharge.GetChargeOverWidth() - f_dEdx_2D), backwardsDelta(hitCharge.GetChargeOverWidth() - b_dEdx_2D);
 
-        float f_sigma(std::sqrt((0.00419133 * f_dEdx_2D * f_dEdx_2D) + (0.00967141 * f_dEdx_2D))); //70%
-        float b_sigma(std::sqrt((0.00419133 * b_dEdx_2D * b_dEdx_2D) + (0.00967141 * b_dEdx_2D))); //70%
+        float f_sigma(std::sqrt((0.00164585 * f_dEdx_2D * f_dEdx_2D) + (0.0201838 * f_dEdx_2D))); //80%
+        float b_sigma(std::sqrt((0.00164585 * b_dEdx_2D * b_dEdx_2D) + (0.0201838 * b_dEdx_2D))); //80%
 
         float lp(hitCharge.GetLongitudinalPosition()), hw(hitCharge.GetHitWidth());
         float f_Q_fit_f(Q_fit_f), f_Q_fit_b(Q_fit_b);
@@ -1492,9 +1535,6 @@ void TrackDirectionTool::PerformFits(HitChargeVector &hitChargeVector, HitCharge
 
 void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW, DirectionFitObject &directionFitObject)
 {
-    if (pTargetClusterW->GetNCaloHits() < m_minClusterCaloHits || LArClusterHelper::GetLength(pTargetClusterW) < m_minClusterLength)
-        throw StatusCodeException(STATUS_CODE_FAILURE);
-
     HitChargeVector hitChargeVector;
     this->FillHitChargeVector(pTargetClusterW, hitChargeVector);
 
@@ -1503,6 +1543,12 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
 
     this->SimpleTrackEndFilter(filteredHitChargeVector);
     this->TrackEndFilter(filteredHitChargeVector, directionFitObject);
+
+    if (pTargetClusterW->GetNCaloHits() < 1.5 * m_minClusterCaloHits || LArClusterHelper::GetLength(pTargetClusterW) < m_minClusterLength)
+    {
+        //std::cout << "Cluster too small" << std::endl;
+        throw StatusCodeException(STATUS_CODE_FAILURE);
+    }
 
     this->FitHitChargeVector(filteredHitChargeVector, directionFitObject);
 
@@ -1539,8 +1585,15 @@ void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, Direc
     SplitObject splitObject;
     this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied, splitObject);
 
+    DirectionFitObject largestFitObject(forwardsSplitResult.GetNHits() == forwardsSplitResult.GetNHits() ? forwardsSplitResult : backwardsSplitResult);
+
+    //To create a chi squared change scatter plot
+    splitObject.SetAfterNHits(largestFitObject.GetNHits());
+    directionFitObject.SetSplitObject(splitObject);
+
     if (splitApplied)
     {
+        //std::cout << "Split applied" << std::endl;
         //std::cout << "Applied Hypothesis #2 (Split Particle)" << std::endl;
         directionFitObject.SetHypothesis(2); 
 
@@ -1550,14 +1603,9 @@ void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, Direc
 
         //Delta chi squared should still make sense for distributions, so take the likely muon
         //DirectionFitObject largestFitObject(forwardsSplitResult.GetNHits() > backwardsSplitResult.GetNHits() ? forwardsSplitResult : backwardsSplitResult);
-        DirectionFitObject largestFitObject(forwardsSplitResult.GetDirectionEstimate() == forwardsSplitResult.GetMCDirection() ? forwardsSplitResult : backwardsSplitResult);
         directionFitObject.SetForwardsChiSquared(largestFitObject.GetForwardsChiSquared());
         directionFitObject.SetBackwardsChiSquared(largestFitObject.GetBackwardsChiSquared());
         directionFitObject.SetNHits(largestFitObject.GetNHits());
-
-        //To create a chi squared change scatter plot
-        splitObject.SetAfterNHits(largestFitObject.GetNHits());
-        directionFitObject.SetSplitObject(splitObject);
     }
 }
 
@@ -1577,14 +1625,14 @@ void TrackDirectionTool::TestHypothesisThree(DirectionFitObject &directionFitObj
 
     bool likelyCorrectFragmentRemoval(directionFitObject.GetDirectionEstimate() != fragmentRemovalDirectionFitObject.GetDirectionEstimate() && directionFitObject.GetMinChiSquaredPerHit() - fragmentRemovalDirectionFitObject.GetMinChiSquaredPerHit() >= 2.0);
 
+    SplitObject frObject(filteredHitChargeVector.size(), fragmentlessHitChargeVector.size(), directionFitObject.GetMinChiSquaredPerHit(), fragmentRemovalDirectionFitObject.GetMinChiSquaredPerHit(), directionFitObject.GetMinChiSquaredPerHit() - fragmentRemovalDirectionFitObject.GetMinChiSquaredPerHit(), 0.f);
+    directionFitObject.SetFRObject(frObject); 
+
     if (likelyCorrectFragmentRemoval)
     {
         //std::cout << "Applied Hypothesis #3: fragment removed." << std::endl;
         directionFitObject.SetHypothesis(3); 
         directionFitObject = fragmentRemovalDirectionFitObject;
-
-        SplitObject frObject(filteredHitChargeVector.size(), fragmentlessHitChargeVector.size(), directionFitObject.GetMinChiSquaredPerHit(), fragmentRemovalDirectionFitObject.GetMinChiSquaredPerHit(), directionFitObject.GetMinChiSquaredPerHit() - fragmentRemovalDirectionFitObject.GetMinChiSquaredPerHit(), 0.f);
-        directionFitObject.SetFRObject(frObject); 
     }
 }
 
@@ -1598,8 +1646,14 @@ void TrackDirectionTool::AddToSlidingFitCache(const Cluster *const pCluster)
     const float slidingFitPitch(LArGeometryHelper::GetWireZPitch(this->GetPandora()));
     const TwoDSlidingFitResult slidingFit(pCluster, m_slidingFitWindow, slidingFitPitch);
 
+    //std::cout << slidingFit.GetGlobalMinLayerPosition().GetZ() << std::endl;
+    //std::cout << slidingFit.GetGlobalMaxLayerPosition().GetZ() << std::endl;
+
     if (!m_slidingFitResultMap.insert(TwoDSlidingFitResultMap::value_type(pCluster, slidingFit)).second)
+    {
+        std::cout << "Sliding fit failure" << std::endl;
         throw StatusCodeException(STATUS_CODE_FAILURE);
+    }
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -1609,7 +1663,10 @@ const TwoDSlidingFitResult &TrackDirectionTool::GetCachedSlidingFit(const Cluste
     TwoDSlidingFitResultMap::const_iterator iter = m_slidingFitResultMap.find(pCluster);
 
     if (m_slidingFitResultMap.end() == iter)
+    {
+        std::cout << "Sliding fit retrieval failure" << std::endl;
         throw StatusCodeException(STATUS_CODE_NOT_FOUND);
+    }
 
     return iter->second;
 }
@@ -1672,10 +1729,8 @@ StatusCode TrackDirectionTool::ReadSettings(const TiXmlHandle xmlHandle)
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "MinClusterCaloHits", m_minClusterCaloHits));
 
-    float minClusterLength = std::sqrt(m_minClusterLength);
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
-        "MinClusterLength", minClusterLength));
-    m_minClusterLength = minClusterLength * minClusterLength;
+        "MinClusterLength", m_minClusterLength));
 
     PANDORA_RETURN_RESULT_IF_AND_IF(STATUS_CODE_SUCCESS, STATUS_CODE_NOT_FOUND, !=, XmlHelper::ReadValue(xmlHandle,
         "NumberTrackEndHits", m_numberTrackEndHits));
