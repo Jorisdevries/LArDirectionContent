@@ -83,6 +83,7 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetClusterDirection(c
 
         this->AddToSlidingFitCache(pTargetClusterW);
         this->GetCalorimetricDirection(pTargetClusterW, finalDirectionFitObject);
+        this->ComputeProbability(finalDirectionFitObject);
         this->SetEndpoints(finalDirectionFitObject, pTargetClusterW);
         //this->SetMCTruth(finalDirectionFitObject, pTargetClusterW);
 
@@ -111,17 +112,16 @@ TrackDirectionTool::DirectionFitObject TrackDirectionTool::GetPfoDirection(const
 
         if (pClusterW->GetNCaloHits() <= m_minClusterCaloHits)
         {
-            //std::cout << "ERROR: PFO is tiny!" << std::endl;
+            std::cout << "ERROR: PFO is tiny!" << std::endl;
             throw StatusCodeException(STATUS_CODE_NOT_FOUND);
         }
 
         DirectionFitObject finalDirectionFitObject = GetClusterDirection(pClusterW);
+        this->ComputeProbability(finalDirectionFitObject);
 
         //If the PFO is 3D, then 3D endpoints should be set 
         if (LArPfoHelper::IsThreeD(pPfo))
-        {
             SetEndpoints(finalDirectionFitObject, trackStateVector);
-        }
 
         this->TidyUp();
         return finalDirectionFitObject;
@@ -249,7 +249,7 @@ const Cluster* TrackDirectionTool::GetTargetClusterFromPFO(const ParticleFlowObj
 
     if (bestClusterList.size() == 0)
     {
-        //std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
+        std::cout << "ERROR: no W clusters could be extracted from the PFO!" << std::endl;
         throw StatusCodeException(STATUS_CODE_NOT_FOUND);
     }
 
@@ -487,6 +487,42 @@ void TrackDirectionTool::SimpleTrackEndFilter(HitChargeVector &hitChargeVector)
     std::remove_if(hitChargeVector.begin(), hitChargeVector.end(),
         [](HitCharge & hitCharge) { return hitCharge.m_intails; }),
     hitChargeVector.end());
+
+    //Get track length and Q over W span for last step
+    float trackLength(0.f), minQoverW(1e6), maxQoverW(0.f);
+    this->GetTrackLength(hitChargeVector, trackLength);
+
+    for (HitCharge &hitCharge : hitChargeVector)
+    {
+        if (hitCharge.GetChargeOverWidth() < minQoverW)
+            minQoverW = hitCharge.GetChargeOverWidth();
+
+        if (hitCharge.GetChargeOverWidth() > maxQoverW)
+            maxQoverW = hitCharge.GetChargeOverWidth();
+    }
+
+    //If there is only one hit in a wide charge range, remove it
+    for (HitChargeVector::const_iterator iter = hitChargeVector.begin(); iter != hitChargeVector.end(); )
+    {
+        bool nearbyCharge(false);
+
+        for (HitCharge &hitCharge : hitChargeVector)
+        {
+            if (std::abs(hitCharge.GetLongitudinalPosition() - (*iter).GetLongitudinalPosition()) <= 0.025 * trackLength)
+                continue;
+
+            if (std::abs(hitCharge.GetChargeOverWidth() - (*iter).GetChargeOverWidth()) <= 0.1 * (maxQoverW - minQoverW))
+            {
+                nearbyCharge = true;
+                break;
+            }
+        }
+
+        if (!nearbyCharge) 
+            iter = hitChargeVector.erase(iter);
+        else
+            ++iter;
+    }
 }
 
 //----------------------------------------------------------------------------------------------------------------------------------
@@ -555,6 +591,9 @@ void TrackDirectionTool::TrackEndFilter(HitChargeVector &hitChargeVector, Direct
     tefObject.SetMinChiSquaredPerHitChange(tefBeforeChiSquaredPerHit - tefAfterChiSquaredPerHit);
     tefObject.SetBeforeNHits(hitChargeVector.size());
     tefObject.SetAfterNHits(filteredHitChargeVector.size());
+    tefObject.SetSplitApplied(shouldApply);
+    tefObject.SetBeforeDeltaChiSquaredPerHit(beforeDirectionFitObject.GetDeltaChiSquaredPerHit());
+
     directionFitObject.SetTEFObject(tefObject);
 
     if (shouldApply)
@@ -741,6 +780,8 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
         splitObject.SetAfterMinChiSquaredPerHit(beforeDirectionFitObject.GetMinChiSquaredPerHit() - ChiSquaredPerHitChange);
         splitObject.SetMinChiSquaredPerHitChange(ChiSquaredPerHitChange);
         splitObject.SetBeforeNHits(hitChargeVector.size());
+        splitObject.SetSplitApplied(splitApplied);
+        splitObject.SetBeforeDeltaChiSquaredPerHit(beforeDirectionFitObject.GetDeltaChiSquaredPerHit());
     }
 }
 
@@ -1274,7 +1315,6 @@ void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector, Tr
     std::sort(backwardsFitPoints.begin(), backwardsFitPoints.end(), SortHitChargeVectorByRL);
 
     DirectionFitObject finalDirectionFitObject(thisHitChargeVector, forwardsFitPoints, backwardsFitPoints, numberHits, mean_dEdx, particleForwardsChiSquared, particleBackwardsChiSquared);
-    this->ComputeProbability(finalDirectionFitObject);
 
     SplitObject tefObject(fitResult.GetTEFObject());
     finalDirectionFitObject.SetTEFObject(tefObject);
@@ -1294,13 +1334,12 @@ void TrackDirectionTool::FitHitChargeVector(HitChargeVector &hitChargeVector1, H
 
 void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
 {
-    float forwardsChiSquared(fitResult.GetForwardsChiSquared()), backwardsChiSquared(fitResult.GetBackwardsChiSquared()), nHits(fitResult.GetNHits());
-    float deltaChiSquared((forwardsChiSquared - backwardsChiSquared)/nHits);
+    float deltaChiSquaredPerHit(fitResult.GetDeltaChiSquaredPerHit()), forwardsChiSquaredPerHit(fitResult.GetForwardsChiSquaredPerHit()), backwardsChiSquaredPerHit(fitResult.GetBackwardsChiSquaredPerHit());
 
     std::string fileName(m_probabilityFileName.c_str());
     ifstream inputFile(fileName);
 
-    if (deltaChiSquared < -15.0 || deltaChiSquared > 15.0)
+    if (deltaChiSquaredPerHit < -15.0 || deltaChiSquaredPerHit > 15.0)
     {
         float probability(0.5);
         fitResult.SetProbability(probability);
@@ -1314,8 +1353,8 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
         TH1F* forwardsDeltaChiSquared = (TH1F*)f->Get("forwardsDeltaChiSquared"); 
         TH1F* backwardsDeltaChiSquared = (TH1F*)f->Get("backwardsDeltaChiSquared"); 
 
-        float forwardsBinEntry = forwardsDeltaChiSquared->GetBinContent(forwardsDeltaChiSquared->GetBin(forwardsChiSquared/nHits));
-        float backwardsBinEntry = backwardsDeltaChiSquared->GetBinContent(backwardsDeltaChiSquared->GetBin(backwardsChiSquared/nHits));
+        float forwardsBinEntry = forwardsDeltaChiSquared->GetBinContent(forwardsDeltaChiSquared->GetBin(forwardsChiSquaredPerHit));
+        float backwardsBinEntry = backwardsDeltaChiSquared->GetBinContent(backwardsDeltaChiSquared->GetBin(backwardsChiSquaredPerHit));
         float probability(forwardsBinEntry/(forwardsBinEntry + backwardsBinEntry));
 
         //TO DO: OUT OF RANGE PROBABILITIES
@@ -1327,7 +1366,7 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
     {
         //std::cout << "WARNING: using pre-defined probability values calibrated on CCQEL muons, because probability.root cannot be found. Define a probability m_probabilityFileName by including <FileName>m_probabilityFileName.root</FileName> in the Pandora XML settings file." << std::endl;
 
-        std::map<float, int> deltaChiSquaredToBinMap = {
+        std::map<float, int> deltaChiSquaredPerHitToBinMap = {
         {-15.0, 1}, {-14.625, 2}, {-14.25, 3}, {-13.875, 4}, {-13.5, 5}, {-13.125, 6}, {-12.75, 7}, {-12.375, 8}, {-12.0, 9}, {-11.625, 10},
         {-11.25, 11}, {-10.875, 12}, {-10.5, 13}, {-10.125, 14}, {-9.75, 15}, {-9.375, 16}, {-9.0, 17}, {-8.625, 18}, {-8.25, 19}, {-7.875, 20},
         {-7.5, 21}, {-7.125, 22}, {-6.75, 23}, {-6.375, 24}, {-6.0, 25}, {-5.625, 26}, {-5.25, 27}, {-4.875, 28}, {-4.5, 29}, {-4.125, 30},
@@ -1349,8 +1388,8 @@ void TrackDirectionTool::ComputeProbability(DirectionFitObject &fitResult)
         {71, 0.107868}, {72, 0.0831429}, {73, 0.178738}, {74, 0.119737}, {75, 0.107868}, {76, 0.178738}, {77, 0.134541}, {78, 0.521117}, {79, 0.266179}, {80, 0.266179}
         };
 
-        std::map<float, int>::iterator binIter = deltaChiSquaredToBinMap.lower_bound(deltaChiSquared);
-        if(binIter != deltaChiSquaredToBinMap.begin()) {--binIter;}
+        std::map<float, int>::iterator binIter = deltaChiSquaredPerHitToBinMap.lower_bound(deltaChiSquaredPerHit);
+        if(binIter != deltaChiSquaredPerHitToBinMap.begin()) {--binIter;}
         int bin((*binIter).second);
 
         std::map<int, float>::iterator probabilityIter = binToProbabilityMap.lower_bound(bin);
@@ -1546,7 +1585,7 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
 
     if (pTargetClusterW->GetNCaloHits() < 1.5 * m_minClusterCaloHits || LArClusterHelper::GetLength(pTargetClusterW) < m_minClusterLength)
     {
-        //std::cout << "Cluster too small" << std::endl;
+        std::cout << "Cluster too small" << std::endl;
         throw StatusCodeException(STATUS_CODE_FAILURE);
     }
 

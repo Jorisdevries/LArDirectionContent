@@ -123,20 +123,25 @@ public:
 
         SplitObject();
         SplitObject(int beforeNumerHits, int afterNumberHits, float beforeMinChiSquaredPerHit, float afterMinChiSquaredPerhit, float chiSquaredPerHitChange, float splitPosition);
+        SplitObject(int beforeNumberHits, int afterNumberHits, float beforeMinChiSquaredPerHit, float afterMinChiSquaredPerHit, float chiSquaredPerHitChange, float splitPosition, bool splitApplied, float beforeDeltaChiSquaredPerHit); 
 
-        void     SetBeforeNHits(int beforeNumberHits);
-        void     SetAfterNHits(int afterNumberHits);
+        void   SetBeforeNHits(int beforeNumberHits);
+        void   SetAfterNHits(int afterNumberHits);
         void   SetBeforeMinChiSquaredPerHit(float beforeMinChiSquaredPerHit);
         void   SetAfterMinChiSquaredPerHit(float afterMinChiSquaredPerHit);
         void   SetMinChiSquaredPerHitChange(float chiSquaredPerHitChange);
         void   SetSplitPosition(float splitPosition);
+        void   SetSplitApplied(bool splitApplied);
+        void   SetBeforeDeltaChiSquaredPerHit(float beforeDeltaChiSquaredPerHit);
 
-        int     GetBeforeNHits();
-        int     GetAfterNHits();
-        float   GetBeforeMinChiSquaredPerHit();
-        float   GetAfterMinChiSquaredPerHit();
-        float   GetMinChiSquaredPerHitChange();
-        float   GetSplitPosition();
+        int    GetBeforeNHits();
+        int    GetAfterNHits();
+        float  GetBeforeMinChiSquaredPerHit();
+        float  GetAfterMinChiSquaredPerHit();
+        float  GetMinChiSquaredPerHitChange();
+        float  GetSplitPosition();
+        bool   GetSplitApplied();
+        float  GetBeforeDeltaChiSquaredPerHit();
     
 
     private:
@@ -146,6 +151,8 @@ public:
         float                                       m_afterminchisquaredperhit;
         float                                       m_chisquaredperhitchange;
         float                                       m_splitposition;
+        bool                                        m_splitapplied;
+        float                                       m_beforedeltachisquaredperhit;        
     };
 
     class LookupTable
@@ -599,7 +606,9 @@ inline TrackDirectionTool::SplitObject::SplitObject() :
     m_beforeminchisquaredperhit(0.f),
     m_afterminchisquaredperhit(0.f),
     m_chisquaredperhitchange(0.f),
-    m_splitposition(0.f)
+    m_splitposition(0.f),
+    m_splitapplied(false),
+    m_beforedeltachisquaredperhit(0.f)        
 {
 }
 
@@ -611,11 +620,28 @@ inline TrackDirectionTool::SplitObject::SplitObject(int beforeNumberHits, int af
     m_beforeminchisquaredperhit(beforeMinChiSquaredPerHit),
     m_afterminchisquaredperhit(afterMinChiSquaredPerHit),
     m_chisquaredperhitchange(chiSquaredPerHitChange),
-    m_splitposition(splitPosition)
+    m_splitposition(splitPosition),
+    m_splitapplied(false),
+    m_beforedeltachisquaredperhit(0.f)        
 {
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
+
+inline TrackDirectionTool::SplitObject::SplitObject(int beforeNumberHits, int afterNumberHits, float beforeMinChiSquaredPerHit, float afterMinChiSquaredPerHit, float chiSquaredPerHitChange, float splitPosition, bool splitApplied, float beforeDeltaChiSquaredPerHit) :
+    m_beforenhits(beforeNumberHits),
+    m_afternhits(afterNumberHits),
+    m_beforeminchisquaredperhit(beforeMinChiSquaredPerHit),
+    m_afterminchisquaredperhit(afterMinChiSquaredPerHit),
+    m_chisquaredperhitchange(chiSquaredPerHitChange),
+    m_splitposition(splitPosition),
+    m_splitapplied(splitApplied),
+    m_beforedeltachisquaredperhit(beforeDeltaChiSquaredPerHit)        
+{
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
 inline void     TrackDirectionTool::SplitObject::SetBeforeNHits(int beforeNumberHits)
 {
     m_beforenhits = beforeNumberHits;
@@ -646,6 +672,16 @@ inline void   TrackDirectionTool::SplitObject::SetSplitPosition(float splitPosit
     m_splitposition = splitPosition;
 }
 
+inline void   TrackDirectionTool::SplitObject::SetSplitApplied(bool splitApplied)
+{
+    m_splitapplied = splitApplied;
+}
+
+inline void   TrackDirectionTool::SplitObject::SetBeforeDeltaChiSquaredPerHit(float beforeDeltaChiSquaredPerHit)
+{
+    m_beforedeltachisquaredperhit = beforeDeltaChiSquaredPerHit;
+}
+
 inline int     TrackDirectionTool::SplitObject::GetBeforeNHits()
 {
     return m_beforenhits;
@@ -674,6 +710,16 @@ inline float   TrackDirectionTool::SplitObject::GetMinChiSquaredPerHitChange()
 inline float   TrackDirectionTool::SplitObject::GetSplitPosition()
 {
     return m_splitposition;
+}
+
+inline bool TrackDirectionTool::SplitObject::GetSplitApplied()
+{
+    return m_splitapplied;
+}
+
+inline float TrackDirectionTool::SplitObject::GetBeforeDeltaChiSquaredPerHit()
+{
+    return m_beforedeltachisquaredperhit;
 }
 
 inline TrackDirectionTool::LookupTable::LookupTable()
