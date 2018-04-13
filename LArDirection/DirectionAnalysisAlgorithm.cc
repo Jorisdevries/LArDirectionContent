@@ -257,9 +257,9 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
 
         for (auto pCaloHitV : caloHitList)
         {
-            float deltaX(pCaloHitV->GetPositionVector().GetX() != 0 ? (std::abs(pCaloHitV->GetPositionVector().GetX() - pTargetCaloHitW->GetPositionVector().GetX())) : 0);
-            float deltaY(pCaloHitV->GetPositionVector().GetY() != 0 ? (std::abs(pCaloHitV->GetPositionVector().GetY() - pTargetCaloHitW->GetPositionVector().GetY())) : 0);
-            float deltaZ(pCaloHitV->GetPositionVector().GetZ() != 0 ? (std::abs(pCaloHitV->GetPositionVector().GetZ() - pTargetCaloHitW->GetPositionVector().GetZ())) : 0);
+            float deltaX((pCaloHitV->GetPositionVector().GetX() != 0 && pTargetCaloHitW->GetPositionVector().GetX() != 0) ? (std::abs(pCaloHitV->GetPositionVector().GetX() - pTargetCaloHitW->GetPositionVector().GetX())) : 0);
+            float deltaY((pCaloHitV->GetPositionVector().GetY() != 0 && pTargetCaloHitW->GetPositionVector().GetY() != 0) ? (std::abs(pCaloHitV->GetPositionVector().GetY() - pTargetCaloHitW->GetPositionVector().GetY())) : 0);
+            float deltaZ((pCaloHitV->GetPositionVector().GetZ() != 0 && pTargetCaloHitW->GetPositionVector().GetZ() != 0) ? (std::abs(pCaloHitV->GetPositionVector().GetZ() - pTargetCaloHitW->GetPositionVector().GetZ())) : 0);
 
             float distance(std::sqrt((deltaX*deltaX) + (deltaY*deltaY) + (deltaZ*deltaZ)));
 
