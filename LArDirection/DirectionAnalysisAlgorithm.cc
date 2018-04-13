@@ -96,16 +96,10 @@ bool DirectionAnalysisAlgorithm::CheckEventType(const pandora::MCParticleList *p
     LArMCParticleHelper::GetTrueNeutrinos(pMCParticleList, trueNeutrinos);
 
     if (trueNeutrinos.size() != 1)
-    {
-        std::cout << "WARNING: there is not just one true neutrino in the event." << std::endl;
         return false;
-    }
 
     if (LArMCParticleHelper::GetNuanceCode((*(trueNeutrinos.begin()))) != 1001) 
-    {
-        std::cout << "WARNING: not CCQEL." << std::endl;
         return false;
-    }
 
     LArMCParticleHelper::MCContributionMap selectedMCParticles;
     LArMCParticleHelper::PrimaryParameters parameters;
@@ -134,10 +128,7 @@ bool DirectionAnalysisAlgorithm::CheckEventType(const pandora::MCParticleList *p
     }
 
     if (nMuons != targetNumberMuons || nProtons != targetNumberProtons || (nPrimaryPfos != 0 && nPrimaryPfos == targetNumberPfos) || nOthers != 0)
-    {
-        std::cout << "WARNING: not target interaction channel." << std::endl;
         return false;
-    }
 
     return true;
 }
@@ -151,9 +142,6 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
 
     float vertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector));
     float minVertexDR(this->GetMinVertexDR(pMCParticleList, pCaloHitList, vertexVector));
-
-    std::cout << "Vertex DR: " << vertexDR << std::endl;
-    std::cout << "pfoVector.size(): " << pfoVector.size() << std::endl;
 
     float longestPfoLength(0.f);
     pandora::PfoVector targetPfoVector(pfoVector); 
@@ -182,8 +170,6 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
     const ParticleFlowObject *const pTargetPfo(*(targetPfoVector.begin()));
     TrackDirectionTool::DirectionFitObject directionFit = m_pTrackDirectionTool->GetPfoDirection(pTargetPfo);
 
-    std::cout << ">>>>> DELTA CHI SQUARED: " << directionFit.GetDeltaChiSquaredPerHit() << std::endl;
-    std::cout << "Probability: " << directionFit.GetProbability()<< std::endl;
     pandora::VertexVector vertexVectorReweighted(vertexVector);
 
     //Linearly reweight vertex score by direction probability
@@ -195,9 +181,6 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
     }
 
     float afterDirectionVertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVectorReweighted));
-
-    std::cout << "Vertex DR: " << vertexDR << std::endl;
-    std::cout << "Direction reweighted vertex DR: " << afterDirectionVertexDR << std::endl;
 
     if (m_drawFit)
     {
@@ -311,7 +294,7 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
             trueVertexPosition = pMCParticle->GetVertex();
     }
 
-    float afterSplitVertexDR((trueVertexPosition - pNewVertex->GetPosition()).GetMagnitude());
+    float afterSplitVertexDR(fitResult.GetSplitObject().GetSplitApplied() ? (trueVertexPosition - pNewVertex->GetPosition()).GetMagnitude() : vertexDR);
 
     bool isClusterTwoParticles(false);
     this->IsClusterTwoParticles(pTargetCluster, fitResult.GetForwardsFitCharges(), fitResult.GetBackwardsFitCharges(), isClusterTwoParticles);
@@ -338,8 +321,6 @@ float DirectionAnalysisAlgorithm::GetVertexDR(const pandora::MCParticleList *pMC
             trueVertexPosition = pMCParticle->GetVertex();
     }
 
-    std::cout << "True vertex position: (" << trueVertexPosition.GetX() << ", " << trueVertexPosition.GetY() << ", " << trueVertexPosition.GetZ() << ")" << std::endl;
-
     LArMCParticleHelper::MCContributionMap selectedMCParticles;
     LArMCParticleHelper::PrimaryParameters parameters;
     LArMCParticleHelper::SelectReconstructableMCParticles(pMCParticleList, pCaloHitList, parameters, LArMCParticleHelper::IsBeamNeutrinoFinalState, selectedMCParticles);
@@ -347,19 +328,12 @@ float DirectionAnalysisAlgorithm::GetVertexDR(const pandora::MCParticleList *pMC
     float maxScore(-1000.f), vertexDR(0.f);
     for (const pandora::Vertex *const pVertex : vertexVector)
     {
-        std::cout << "Vertex position: (" << pVertex->GetPosition().GetX() << ", " << pVertex->GetPosition().GetY() << ", " << pVertex->GetPosition().GetZ() << ")" << std::endl;
-        std::cout << "Vertex score: " << pVertex->GetScore() << std::endl;
-        std::cout << "Vertex DR: " << (pVertex->GetPosition() - trueVertexPosition).GetMagnitude() << std::endl;
-        std::cout << "---------------------------" << std::endl;
-
         if (pVertex->GetScore() > maxScore)
         {
             maxScore = pVertex->GetScore();
             vertexDR = (pVertex->GetPosition() - trueVertexPosition).GetMagnitude();
         }
     }
-
-    std::cout << "Vertex DR: " << vertexDR << std::endl;
 
     return vertexDR;
 }
@@ -409,7 +383,6 @@ void DirectionAnalysisAlgorithm::NormaliseVertexScores(pandora::VertexVector &ve
     for (const pandora::Vertex *const pVertex : vertexVector)
     {
         float newScore(((newMaxiumum - newMinimum) * (pVertex->GetScore() - lowestScore))/(highestScore - lowestScore) + newMinimum);
-        std::cout << "newScore: " << newScore << std::endl;
         pVertex->SetScore(newScore);
     }
 }
@@ -418,9 +391,6 @@ void DirectionAnalysisAlgorithm::NormaliseVertexScores(pandora::VertexVector &ve
 
 void DirectionAnalysisAlgorithm::WritePfoInformation(pandora::PfoVector &pfoVector)
 {
-    std::cout << ">>>>> PFO fits." << std::endl;
-    std::cout << "Number of PFOs: " << pfoVector.size() << std::endl;
-
     for (const pandora::ParticleFlowObject *const pPfo : pfoVector)
     {
         if (!LArPfoHelper::IsFinalState(pPfo))
@@ -448,9 +418,6 @@ void DirectionAnalysisAlgorithm::WritePfoInformation(pandora::PfoVector &pfoVect
 
             if (m_drawFit)
             {
-                std::cout << "Beginpoint: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
-                std::cout << "Endpoint: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
-
                 fitResult.DrawFit();
                 PANDORA_MONITORING_API(Pause(this->GetPandora()));
             }
@@ -467,9 +434,6 @@ void DirectionAnalysisAlgorithm::WritePfoInformation(pandora::PfoVector &pfoVect
 
 void DirectionAnalysisAlgorithm::WriteClusterAndHitInformation(pandora::ClusterVector &clusterVector)
 {
-    std::cout << ">>>>> Cluster fits." << std::endl;
-    std::cout << "Number of Clusters: " << clusterVector.size() << std::endl;
-
     for (const pandora::Cluster* const pCluster : clusterVector)
     {
         try
@@ -492,7 +456,6 @@ void DirectionAnalysisAlgorithm::WriteClusterAndHitInformation(pandora::ClusterV
                 continue;
 
             TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
-    std::cout << ">>>>> DELTA CHI SQUARED: " << fitResult.GetDeltaChiSquaredPerHit() << std::endl;
             this->WriteToTree(pCluster, fitResult, clusterTreeName);
 
             for (TrackDirectionTool::HitCharge &hitCharge : fitResult.GetHitChargeVector())
@@ -500,9 +463,6 @@ void DirectionAnalysisAlgorithm::WriteClusterAndHitInformation(pandora::ClusterV
 
             if (m_drawFit)
             {
-                std::cout << "Beginpoint: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
-                std::cout << "Endpoint: (" << fitResult.GetEndpoint().GetX() << ", " << fitResult.GetEndpoint().GetY() << ", " << fitResult.GetEndpoint().GetZ() << ")" << std::endl;
-
                 fitResult.DrawFit();
                 PANDORA_MONITORING_API(Pause(this->GetPandora()));
             }
@@ -525,7 +485,6 @@ const Cluster* DirectionAnalysisAlgorithm::GetTargetClusterFromPFO(const Particl
 
     if (clusterListW.size() == 0)
     {    
-        std::cout << "ERROR (DirectionAnalysisAlgorithm): no W clusters could be extracted from the PFO!" << std::endl;
         throw StatusCodeException(STATUS_CODE_NOT_FOUND);
     }    
 
