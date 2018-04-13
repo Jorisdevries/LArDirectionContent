@@ -13,12 +13,14 @@
 #include "Pandora/Pandora.h"
 
 #include "LArDirection/ExampleDirectionAlgorithm.h"
+#include "LArDirection/DirectionAnalysisAlgorithm.h"
 #include "LArDirection/TrackDirectionTool.h"
 
 #include "LArDirectionContent.h"
 
 #define LAR_DIRECTION_ALGORITHM_LIST(d)                                                                                                   \
-    d("LArExampleDirection",                  ExampleDirectionAlgorithm)
+    d("LArExampleDirection",                  ExampleDirectionAlgorithm)                                                                  \
+    d("LArDirectionAnalysis",                  DirectionAnalysisAlgorithm)
 
 #define LAR_DIRECTION_ALGORITHM_TOOL_LIST(d)                                                                                              \
     d("LArDirectionTool",           TrackDirectionTool)

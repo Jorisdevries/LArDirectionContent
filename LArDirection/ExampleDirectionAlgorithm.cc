@@ -35,6 +35,7 @@ StatusCode ExampleDirectionAlgorithm::Run()
             try
             {
                 TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pCluster);
+                fitResult.DrawFit();
 
                 std::cout << "Probability: " << fitResult.GetProbability() << std::endl;
                 std::cout << "Vertex position: (" << fitResult.GetBeginpoint().GetX() << ", " << fitResult.GetBeginpoint().GetY() << ", " << fitResult.GetBeginpoint().GetZ() << ")" << std::endl;
