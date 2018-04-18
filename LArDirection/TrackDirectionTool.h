@@ -278,14 +278,18 @@ public:
         public:
 
             JumpObject(float &longitudinalPosition, float &jumpValue);
+            JumpObject(float &longitudinalPosition, float &jumpValue, float &openingAngle);
 
             float GetLongitudinalPosition();
 
             float GetJumpValue();
 
+            float GetOpeningAngle();
+
         private:
             float       m_longitudinalposition;
             float       m_jumpvalue;
+            float       m_openingangle;
 
     };
 
@@ -355,7 +359,7 @@ public:
 
     void FindTrackEndJumps(HitChargeVector &hitChargeVector, std::vector<JumpObject> &trackEndJumps);
 
-    void ParticleSplitting(const pandora::Cluster *const pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, SplitObject &splitObject);
+    void ParticleSplitting(HitChargeVector &hitChargeVector, DirectionFitObject &fitResult1, DirectionFitObject &fitResult2, bool &splitApplied, SplitObject &splitObject);
 
     void FindKinkSize(const pandora::Cluster *const pCluster, float &splitPosition, float &kinkSize);
 
@@ -391,7 +395,7 @@ public:
 
     void TestHypothesisOne(DirectionFitObject &directionFitObject);
 
-    void TestHypothesisTwo(const pandora::Cluster* pTargetClusterW, DirectionFitObject &directionFitObject);
+    void TestHypothesisTwo(DirectionFitObject &directionFitObject);
 
     void TestHypothesisThree(DirectionFitObject &directionFitObject);
 
@@ -1204,9 +1208,19 @@ inline void TrackDirectionTool::DirectionFitObject::Print()
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-inline TrackDirectionTool::JumpObject::JumpObject(float &longitudinalPosition, float&jumpValue) :
+inline TrackDirectionTool::JumpObject::JumpObject(float &longitudinalPosition, float &jumpValue) :
     m_longitudinalposition(longitudinalPosition),
-    m_jumpvalue(jumpValue)
+    m_jumpvalue(jumpValue),
+    m_openingangle(0.f)
+{
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline TrackDirectionTool::JumpObject::JumpObject(float &longitudinalPosition, float &jumpValue, float &openingAngle) :
+    m_longitudinalposition(longitudinalPosition),
+    m_jumpvalue(jumpValue),
+    m_openingangle(openingAngle)
 {
 }
 
@@ -1222,6 +1236,13 @@ inline float TrackDirectionTool::JumpObject::GetLongitudinalPosition()
 inline float TrackDirectionTool::JumpObject::GetJumpValue()
 {
     return m_jumpvalue;
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+inline float TrackDirectionTool::JumpObject::GetOpeningAngle()
+{
+    return m_openingangle;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------

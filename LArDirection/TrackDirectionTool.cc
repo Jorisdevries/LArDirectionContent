@@ -721,7 +721,7 @@ void TrackDirectionTool::FindTrackEndJumps(HitChargeVector &hitChargeVector, std
 
 //----------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitChargeVector &hitChargeVector, DirectionFitObject &backwardsDirectionFitObject, DirectionFitObject &forwardsDirectionFitObject, bool &splitApplied, SplitObject &splitObject)
+void TrackDirectionTool::ParticleSplitting(HitChargeVector &hitChargeVector, DirectionFitObject &backwardsDirectionFitObject, DirectionFitObject &forwardsDirectionFitObject, bool &splitApplied, SplitObject &splitObject)
 {
     DirectionFitObject beforeDirectionFitObject;
     this->FitHitChargeVector(hitChargeVector, beforeDirectionFitObject);
@@ -744,8 +744,8 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
 
         float splitMinChiSquared((backwardsTestDirectionFitObject.GetNHits() > 0 ? backwardsTestDirectionFitObject.GetBackwardsChiSquared()/backwardsTestDirectionFitObject.GetNHits() : 0.f) + (forwardsTestDirectionFitObject.GetNHits() > 0 ? forwardsTestDirectionFitObject.GetForwardsChiSquared()/forwardsTestDirectionFitObject.GetNHits() : 0.f));
 
-        float kinkSize(0.f);
-        this->FindKinkSize(pTargetClusterW, splitPosition, kinkSize);
+        //float kinkSize(0.f);
+        //this->FindKinkSize(pTargetClusterW, splitPosition, kinkSize);
 
         if (splitMinChiSquared < afterSplitChiSquared)
         {
@@ -764,7 +764,7 @@ void TrackDirectionTool::ParticleSplitting(const Cluster* pTargetClusterW, HitCh
     float N(beforeNumberHits);
     bool shouldApply(true);
 
-    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (5.0 - ((N/400) * 4.0)))
+    if (beforeNumberHits < 400 && ChiSquaredPerHitChange < (5.65777 - (0.586666/50) * N))
         shouldApply = false;
     if (beforeNumberHits >= 400 && ChiSquaredPerHitChange < 1.0)
         shouldApply = false;
@@ -836,7 +836,7 @@ void TrackDirectionTool::CreateCalorimetricSplitHitVector(HitChargeVector &hitCh
     this->FindKinkSplit(hitChargeVector, splitPositions);
     this->FindJumpSplit(hitChargeVector, splitPositions);
     this->FindPlateauSplit(hitChargeVector, splitPositions);
-    this->FindBowlSplit(hitChargeVector, splitPositions);
+    //this->FindBowlSplit(hitChargeVector, splitPositions);
 
     sort( splitPositions.begin(), splitPositions.end() );
 splitPositions.erase( unique( splitPositions.begin(), splitPositions.end() ), splitPositions.end() );
@@ -941,7 +941,6 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
     }
 
     float fullChargeRange(maxCharge - minCharge);
-
     float chargeHalfWidth(0.1 * fullChargeRange);
 
     for (HitCharge &bin1 : binnedHitChargeVector)
@@ -959,7 +958,7 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
         if (leftHitCollection.size() == 0 || rightHitCollection.size() == 0)
             continue;
 
-        float bestLeftScore(0.f);
+        float bestLeftScore(0.f), bestLeftSlope(0.f);
 
         for (HitCharge &bin2 : leftHitCollection)
         {
@@ -978,11 +977,14 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
             float score((float)nLeftHits/leftHitCollection.size());
 
             if (score > bestLeftScore)
+            {
                 bestLeftScore = score;
+                bestLeftSlope = slope;
+            }
         }
 
 
-        float bestRightScore(0.f);
+        float bestRightScore(0.f), bestRightSlope(0.f);
 
         for (HitCharge &bin2 : rightHitCollection)
         {
@@ -1001,12 +1003,20 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
             float score((float)nRightHits/rightHitCollection.size());
 
             if (score > bestRightScore)
+            {
                 bestRightScore = score;
+                bestRightSlope = slope;
+            }
         }
 
         float kinkPosition(bin1.GetLongitudinalPosition());
         float totalScore(bestLeftScore + bestRightScore);
-        JumpObject kinkObject(kinkPosition, totalScore);
+
+        CartesianVector leftSlopeVector(1.f, 0.f, bestLeftSlope);
+        CartesianVector rightSlopeVector(1.f, 0.f, bestRightSlope);
+        float openingAngle(leftSlopeVector.GetOpeningAngle(rightSlopeVector));
+
+        JumpObject kinkObject(kinkPosition, totalScore, openingAngle);
         kinkObjects.push_back(kinkObject);
     }
 
@@ -1027,7 +1037,9 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
 
         if (nAdded == 0)
         {
-            splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
+            if (kinkObject.GetOpeningAngle() > 0.1)
+                splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
+
             latestJumpPosition = kinkObjects.at(i).GetLongitudinalPosition();
             latestJumpValue = kinkObjects.at(i).GetJumpValue();
             nAdded++;
@@ -1036,17 +1048,23 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
         {
             if ((kinkObject.GetLongitudinalPosition() - latestJumpPosition) < range && kinkObject.GetJumpValue() > latestJumpValue)
             {
-                splitPositions.pop_back();
-                splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
                 latestJumpPosition = kinkObjects.at(i).GetLongitudinalPosition();
                 latestJumpValue = kinkObjects.at(i).GetJumpValue();
+
+                if (kinkObject.GetOpeningAngle() > 0.1)
+                {
+                    splitPositions.pop_back();
+                    splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
+                }
             }
             else if ((kinkObject.GetLongitudinalPosition() - latestJumpPosition) > range)
             {
-                splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
                 latestJumpPosition = kinkObjects.at(i).GetLongitudinalPosition();
                 latestJumpValue = kinkObjects.at(i).GetJumpValue();
                 nAdded++;
+
+                if (kinkObject.GetOpeningAngle() > 0.1)
+                    splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
             }
         }
     }
@@ -1592,7 +1610,7 @@ void TrackDirectionTool::GetCalorimetricDirection(const Cluster* pTargetClusterW
     this->FitHitChargeVector(filteredHitChargeVector, directionFitObject);
 
     this->TestHypothesisOne(directionFitObject);
-    this->TestHypothesisTwo(pTargetClusterW, directionFitObject);
+    this->TestHypothesisTwo(directionFitObject);
     this->TestHypothesisThree(directionFitObject);
 }
 
@@ -1612,7 +1630,7 @@ void TrackDirectionTool::TestHypothesisOne(DirectionFitObject &directionFitObjec
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, DirectionFitObject &directionFitObject)
+void TrackDirectionTool::TestHypothesisTwo(DirectionFitObject &directionFitObject)
 {
     if (directionFitObject.GetHypothesis() == 1 || m_enableSplitting == false)
         return;
@@ -1622,7 +1640,7 @@ void TrackDirectionTool::TestHypothesisTwo(const Cluster* pTargetClusterW, Direc
 
     bool splitApplied(false);
     SplitObject splitObject;
-    this->ParticleSplitting(pTargetClusterW, filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied, splitObject);
+    this->ParticleSplitting(filteredHitChargeVector, backwardsSplitResult, forwardsSplitResult, splitApplied, splitObject);
 
     DirectionFitObject largestFitObject(forwardsSplitResult.GetNHits() == forwardsSplitResult.GetNHits() ? forwardsSplitResult : backwardsSplitResult);
 
