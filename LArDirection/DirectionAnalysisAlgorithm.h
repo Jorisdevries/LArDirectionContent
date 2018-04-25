@@ -43,6 +43,7 @@ private:
     float                   GetMinVertexDR(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector);
     void                    NormaliseVertexScores(pandora::VertexVector &vertexVector);
     void                    WritePfoInformation(pandora::PfoVector &pfoVector);
+    bool                    IsGoodPfo(const pandora::ParticleFlowObject* pPfo);
     void                    WriteClusterAndHitInformation(pandora::ClusterVector &clusterVector);
 
     const pandora::Cluster* GetTargetClusterFromPFO(const pandora::ParticleFlowObject* pPfo);

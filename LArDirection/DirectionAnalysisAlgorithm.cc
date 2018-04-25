@@ -14,6 +14,8 @@
 #include "larpandoracontent/LArHelpers/LArMCParticleHelper.h"
 #include "larpandoracontent/LArObjects/LArMCParticle.h"
 
+#include "LArSpaceChargeHelper.h"
+
 using namespace pandora;
 
 namespace lar_content
@@ -76,13 +78,17 @@ StatusCode DirectionAnalysisAlgorithm::Run()
     pandora::PfoVector pfoVector(pPfoList->begin(), pPfoList->end());
     pandora::VertexVector vertexVector(pVertexList->begin(), pVertexList->end());
 
+    //pandora::CaloHitVector hitVector(pCaloHitList->begin(), pCaloHitList->end());
+    //for (auto pCaloHit : hitVector)
+    //    std::cout << "Hit position: (" << pCaloHit->GetPositionVector().GetX() << "," << pCaloHit->GetPositionVector().GetY() << "," << pCaloHit->GetPositionVector().GetZ() << ")" << std::endl;
+
     this->WritePfoInformation(pfoVector);
     this->WriteClusterAndHitInformation(clusterVector);
 
     if (this->CheckEventType(pMCParticleList, pCaloHitList, pfoVector, 1, 0, 1))
         this->WriteVertexInformation(pMCParticleList, pCaloHitList, vertexVector, pfoVector);
 
-    if (this->CheckEventType(pMCParticleList, pCaloHitList, pfoVector, 1, 1, 0)) //0 pfo argument means do not check pfo count
+    if (this->CheckEventType(pMCParticleList, pCaloHitList, pfoVector, 1, 1, 0)) //0 argument means do not check this count
         this->WriteSplittingInformation(pMCParticleList, pCaloHitList, vertexVector, pfoVector);
     
     return STATUS_CODE_SUCCESS;
@@ -127,7 +133,7 @@ bool DirectionAnalysisAlgorithm::CheckEventType(const pandora::MCParticleList *p
         nPrimaryPfos++;
     }
 
-    if (nMuons != targetNumberMuons || nProtons != targetNumberProtons || (nPrimaryPfos != 0 && nPrimaryPfos == targetNumberPfos) || nOthers != 0)
+    if (nMuons != targetNumberMuons || (targetNumberProtons != 0 && nProtons != targetNumberProtons) || (targetNumberPfos != 0 && nPrimaryPfos != targetNumberPfos) || nOthers != 0)
         return false;
 
     return true;
@@ -184,8 +190,8 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
 
     if (m_drawFit)
     {
-        directionFit.DrawFit();
-        PANDORA_MONITORING_API(Pause(this->GetPandora()));
+        //directionFit.DrawFit();
+        //PANDORA_MONITORING_API(Pause(this->GetPandora()));
     }
 
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "VertexDR", vertexDR));
@@ -206,43 +212,67 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
 
     for (auto pPfo : pfoVector)
     {   
-        if (!LArPfoHelper::IsFinalState(pPfo))
+        try
+        {
+            if (!this->IsGoodPfo(pPfo))
+                continue;
+
+            const Cluster *const pCluster = this->GetTargetClusterFromPFO(pPfo); 
+
+            if (LArClusterHelper::GetLength(pCluster) > longestClusterLength)
+            {   
+                longestClusterLength = LArClusterHelper::GetLength(pCluster);
+                targetClusterVector.clear();
+                targetClusterVector.push_back(pCluster);
+                targetPfoVector.clear();
+                targetPfoVector.push_back(pPfo);
+            }   
+        }
+        catch (...)
+        {
             continue;
-
-        const Cluster *const pCluster = this->GetTargetClusterFromPFO(pPfo); 
-
-        if (LArClusterHelper::GetLength(pCluster) > longestClusterLength)
-        {   
-            longestClusterLength = LArClusterHelper::GetLength(pCluster);
-            targetClusterVector.clear();
-            targetClusterVector.push_back(pCluster);
-            targetPfoVector.clear();
-            targetPfoVector.push_back(pPfo);
-        }   
+        }
     }
 
     if (targetClusterVector.size() == 0 || targetPfoVector.size() == 0)
         return;
 
     const Cluster* const pTargetCluster(*(targetClusterVector.begin()));
-    const ParticleFlowObject *const pTargetPfo(*(targetPfoVector.begin()));
+    //const ParticleFlowObject *const pTargetPfo(*(targetPfoVector.begin()));
 
     TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pTargetCluster);
+
     float splitPosition(fitResult.GetSplitObject().GetSplitPosition());
 
+    //const pandora::CaloHit* leftHit(fitResult.GetForwardsFitCharges().back().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().front().GetLongitudinalPosition() < fitResult.GetForwardsFitCharges().front().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().back().GetLongitudinalPosition() ? fitResult.GetForwardsFitCharges().back().GetCaloHit() : fitResult.GetForwardsFitCharges().front().GetCaloHit());
+    //const pandora::CaloHit* rightHit(fitResult.GetForwardsFitCharges().back().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().front().GetLongitudinalPosition() < fitResult.GetForwardsFitCharges().front().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().back().GetLongitudinalPosition() ? fitResult.GetForwardsFitCharges().front().GetCaloHit() : fitResult.GetForwardsFitCharges().back().GetCaloHit());
+
+    const pandora::CaloHit* leftHit(((fitResult.GetBackwardsFitCharges().back())).GetCaloHit());
+    const pandora::CaloHit* rightHit(((fitResult.GetForwardsFitCharges().front())).GetCaloHit());
+
+    const float targetX((leftHit->GetPositionVector().GetX() + rightHit->GetPositionVector().GetX())/2);
+    const float lowerZ(leftHit->GetPositionVector().GetZ() < rightHit->GetPositionVector().GetZ() ? leftHit->GetPositionVector().GetZ() : rightHit->GetPositionVector().GetZ());
+    const float upperZ(leftHit->GetPositionVector().GetZ() > rightHit->GetPositionVector().GetZ() ? leftHit->GetPositionVector().GetZ() : rightHit->GetPositionVector().GetZ());
+
+    std::cout << "lowerZ: " << lowerZ << std::endl;
+    std::cout << "upperZ: " << upperZ << std::endl;
+    
     //get closest W calohit
     float closestDistance(1e6);
     const pandora::CaloHit* pTargetCaloHitW(NULL);
 
-    for (TrackDirectionTool::HitCharge &hitCharge : fitResult.GetHitChargeVector())
+    for (auto pCaloHit : *pCaloHitList)
     {
-        if (std::abs(hitCharge.GetLongitudinalPosition() - splitPosition) < closestDistance)
+        if (std::abs(pCaloHit->GetPositionVector().GetX() - targetX) < closestDistance && pCaloHit->GetPositionVector().GetZ() > lowerZ && pCaloHit->GetPositionVector().GetZ() < upperZ)
         {
-            closestDistance = std::abs(hitCharge.GetLongitudinalPosition() - splitPosition);
-            pTargetCaloHitW = hitCharge.GetCaloHit();
+            closestDistance = std::abs(pCaloHit->GetPositionVector().GetX() - targetX); 
+            pTargetCaloHitW = pCaloHit; 
         }
     }
 
+    //for (auto pCaloHit : *pCaloHitList)
+
+    /*
     //loop over clusters in pfo to find matching hit in U or V
     ClusterList ClustersV;
     LArPfoHelper::GetClusters(pTargetPfo, TPC_VIEW_V, ClustersV);
@@ -274,10 +304,51 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
     CartesianVector vertexPosition(0.f, 0.f, 0.f);
     float positionChiSquared(0.f);
     LArGeometryHelper::MergeTwoPositions3D(this->GetPandora(), TPC_VIEW_V, TPC_VIEW_W, pTargetCaloHitV->GetPositionVector(), pTargetCaloHitW->GetPositionVector(), vertexPosition, positionChiSquared);
+    */
+
+    //Now find the closest 3D hit
+    pandora::CaloHitVector hitVector(pCaloHitList->begin(), pCaloHitList->end());
+    const pandora::CaloHit* pTarget3DCaloHit(NULL);
+    float closestDistance3D(1e6);
+
+    for (auto pCaloHit : hitVector)
+    {
+        /*
+        if ((pCaloHit->GetPositionVector() - vertexPosition).GetMagnitude() < closestDistance3D)
+        {
+            closestDistance3D = (pCaloHit->GetPositionVector() - vertexPosition).GetMagnitude();
+            pTarget3DCaloHit = pCaloHit;
+        }
+        */
+
+        if (pCaloHit->GetPositionVector().GetX() == 0 || pCaloHit->GetPositionVector().GetY() == 0 || pCaloHit->GetPositionVector().GetZ() == 0)
+            continue;
+    
+            float deltaX((pCaloHit->GetPositionVector().GetX() != 0 && pTargetCaloHitW->GetPositionVector().GetX() != 0) ? (std::abs(pCaloHit->GetPositionVector().GetX() - pTargetCaloHitW->GetPositionVector().GetX())) : 0);
+            float deltaZ((pCaloHit->GetPositionVector().GetZ() != 0 && pTargetCaloHitW->GetPositionVector().GetZ() != 0) ? (std::abs(pCaloHit->GetPositionVector().GetZ() - pTargetCaloHitW->GetPositionVector().GetZ())) : 0);
+
+        float distance(std::sqrt((deltaX*deltaX) + (deltaZ*deltaZ)));
+       
+        if (distance < closestDistance3D) 
+        {
+            closestDistance3D = distance; 
+            pTarget3DCaloHit = pCaloHit;
+        }
+    }
+
+    //Test spacecharge helper
+    LArSpaceChargeHelper::Configure("SCEoffsets_MicroBooNE_E273.root");
+    CartesianVector vertexPosition(pTarget3DCaloHit->GetPositionVector());
+    
+    std::cout << "Original vertex position: (" << vertexPosition.GetX() << "," << vertexPosition.GetY() << "," << vertexPosition.GetZ() << ")" << std::endl;
+
+    CartesianVector correctedPosition = LArSpaceChargeHelper::GetSpaceChargeCorrectedPosition(vertexPosition);
+
+    std::cout << "Spacecharge corrected vertex position: (" << correctedPosition.GetX() << "," << correctedPosition.GetY() << "," << correctedPosition.GetZ() << ")" << std::endl;
 
     //Create vertex
     PandoraContentApi::Vertex::Parameters parameters;
-    parameters.m_position = vertexPosition;
+    parameters.m_position = pTarget3DCaloHit->GetPositionVector();
     parameters.m_vertexLabel = VERTEX_INTERACTION; 
     parameters.m_vertexType = VERTEX_3D; 
 
@@ -289,21 +360,45 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
     CartesianVector trueVertexPosition(0.f, 0.f, 0.f);
 
     for (auto pMCParticle : *pMCParticleList)
-    {
+    {   
         if (pMCParticle->GetParticleId() == 13 && LArMCParticleHelper::IsPrimary(pMCParticle) && pMCParticle->GetVertex().GetY() != 0)
             trueVertexPosition = pMCParticle->GetVertex();
     }
 
+    /*
+    for (auto hitCharge : fitResult.GetBackwardsFitCharges())
+    {
+        std::cout << "L: " << hitCharge.GetLongitudinalPosition() << std::endl;
+        std::cout << "Z: " << hitCharge.GetCaloHit()->GetPositionVector().GetZ() << std::endl;
+        std::cout << "------------" << std::endl;
+    }
+
+    for (auto hitCharge : fitResult.GetForwardsFitCharges())
+    {
+        std::cout << "L: " << hitCharge.GetLongitudinalPosition() << std::endl;
+        std::cout << "Z: " << hitCharge.GetCaloHit()->GetPositionVector().GetZ() << std::endl;
+        std::cout << "------------" << std::endl;
+    }
+    */
+
+    std::cout << "Split position: " << splitPosition << std::endl;
+    std::cout << "True vertex position: (" << trueVertexPosition.GetX() << "," << trueVertexPosition.GetY() << "," << trueVertexPosition.GetZ() << ")" << std::endl;
+    std::cout << "New vertex position: (" << pTarget3DCaloHit->GetPositionVector().GetX() << "," << pTarget3DCaloHit->GetPositionVector().GetY() << "," << pTarget3DCaloHit->GetPositionVector().GetZ() << ")" << std::endl;
+
+    //bool extremeChange(std::abs((trueVertexPosition - pNewVertex->GetPosition()).GetMagnitude() - vertexDR) >= 0.9 * LArClusterHelper::GetLength(pTargetCluster));
     float afterSplitVertexDR(fitResult.GetSplitObject().GetSplitApplied() ? (trueVertexPosition - pNewVertex->GetPosition()).GetMagnitude() : vertexDR);
 
     bool isClusterTwoParticles(false);
     this->IsClusterTwoParticles(pTargetCluster, fitResult.GetForwardsFitCharges(), fitResult.GetBackwardsFitCharges(), isClusterTwoParticles);
     int mcIsClusterTwoParticles(isClusterTwoParticles? 1 : 0);
+
+    std::cout << "Before split vertex DR: " << vertexDR << std::endl;
+    std::cout << "After split vertex DR: " << afterSplitVertexDR << std::endl;
     
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "MCIsClusterTwoParticles", mcIsClusterTwoParticles));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SplitPosition", splitPosition));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexDR", vertexDR));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "afterSplitVertexDR", afterSplitVertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "AfterSplitVertexDR", afterSplitVertexDR));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "FileIdentifier", m_fileIdentifier));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "EventNumber", m_eventNumber));
     PANDORA_MONITORING_API(FillTree(this->GetPandora(), splittingTreeName.c_str()));
@@ -393,31 +488,18 @@ void DirectionAnalysisAlgorithm::WritePfoInformation(pandora::PfoVector &pfoVect
 {
     for (const pandora::ParticleFlowObject *const pPfo : pfoVector)
     {
-        if (!LArPfoHelper::IsFinalState(pPfo))
-            continue;
-
         try
         {
-            const MCParticle* const pMCParticle(LArMCParticleHelper::GetMainMCParticle(pPfo));
+            if (!this->IsGoodPfo(pPfo))
+                continue;
+
             const Cluster *const pCluster = this->GetTargetClusterFromPFO(pPfo); 
-
-            if ((m_particleContained && !m_data && IsParticleContained(pMCParticle)) || (m_particleContained && m_data && !IsRecoParticleContained(pPfo)))
-                continue;
-
-            if (pMCParticle->GetParticleId() != m_targetParticlePDG)
-                continue;
-
-            if (m_cosmic && !LArMCParticleHelper::IsCosmicRay(pMCParticle))
-                continue;
-
-            if (!m_cosmic && LArMCParticleHelper::IsCosmicRay(pMCParticle)) 
-                continue;
-
             TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetPfoDirection(pPfo);
             this->WriteToTree(pCluster, fitResult, pfoTreeName);
 
             if (m_drawFit)
             {
+                std::cout << "Split applied: " << fitResult.GetSplitObject().GetSplitApplied() << std::endl;
                 fitResult.DrawFit();
                 PANDORA_MONITORING_API(Pause(this->GetPandora()));
             }
@@ -425,9 +507,33 @@ void DirectionAnalysisAlgorithm::WritePfoInformation(pandora::PfoVector &pfoVect
 
         catch (...)
         {
-            //std::cout << "Skipping..." << std::endl;
+            std::cout << "Skipping..." << std::endl;
         }
     }
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+bool DirectionAnalysisAlgorithm::IsGoodPfo(const pandora::ParticleFlowObject* pPfo)
+{
+    const MCParticle* const pMCParticle(LArMCParticleHelper::GetMainMCParticle(pPfo));
+
+    if (!LArPfoHelper::IsFinalState(pPfo))
+        return false;
+
+    if ((m_particleContained && !m_data && IsParticleContained(pMCParticle)) || (m_particleContained && m_data && !IsRecoParticleContained(pPfo)))
+        return false;
+
+    if (pMCParticle->GetParticleId() != m_targetParticlePDG)
+        return false;
+
+    if (m_cosmic && !LArMCParticleHelper::IsCosmicRay(pMCParticle))
+        return false;
+
+    if (!m_cosmic && LArMCParticleHelper::IsCosmicRay(pMCParticle)) 
+        return false;
+
+    return true;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -463,8 +569,8 @@ void DirectionAnalysisAlgorithm::WriteClusterAndHitInformation(pandora::ClusterV
 
             if (m_drawFit)
             {
-                fitResult.DrawFit();
-                PANDORA_MONITORING_API(Pause(this->GetPandora()));
+                //fitResult.DrawFit();
+                //PANDORA_MONITORING_API(Pause(this->GetPandora()));
             }
         }
 
