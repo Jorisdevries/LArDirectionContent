@@ -373,11 +373,13 @@ public:
 
     void GetAverageQoverWTrackBody(HitChargeVector &hitChargeVector, float &averageChargeTrackBody);
 
+    void GetQoverWRange(HitChargeVector &hitChargeVector, float &QoverWRange);
+
     void FindKinkSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
 
-    void FindPlateauSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
+    void FindPlateauSplit(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpObjects);
 
-    void FindJumpSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
+    void FindJumpSplit(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpObjects);
 
     void FindBowlSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions);
 

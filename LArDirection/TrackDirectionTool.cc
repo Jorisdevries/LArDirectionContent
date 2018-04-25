@@ -833,13 +833,25 @@ void TrackDirectionTool::FindKinkSize(const Cluster* pCluster, float &splitPosit
 
 void TrackDirectionTool::CreateCalorimetricSplitHitVector(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions)
 {
-    this->FindKinkSplit(hitChargeVector, splitPositions);
-    this->FindJumpSplit(hitChargeVector, splitPositions);
-    this->FindPlateauSplit(hitChargeVector, splitPositions);
+    std::vector<JumpObject> jumpObjects;
+    this->FindJumpSplit(hitChargeVector, jumpObjects);
+    this->FindPlateauSplit(hitChargeVector, jumpObjects);
+
+    for (auto &jumpObject: jumpObjects)
+        splitPositions.push_back(jumpObject.GetLongitudinalPosition());
+
+    float QoverWRange(0.f);
+    this->GetQoverWRange(hitChargeVector, QoverWRange);
+
+    auto it = find_if(jumpObjects.begin(), jumpObjects.end(), [&QoverWRange](JumpObject& obj) {return obj.GetJumpValue() > 0.1 * QoverWRange;});
+
+    if (it == jumpObjects.end())
+        this->FindKinkSplit(hitChargeVector, splitPositions);
+
     //this->FindBowlSplit(hitChargeVector, splitPositions);
 
     sort( splitPositions.begin(), splitPositions.end() );
-splitPositions.erase( unique( splitPositions.begin(), splitPositions.end() ), splitPositions.end() );
+    splitPositions.erase( unique( splitPositions.begin(), splitPositions.end() ), splitPositions.end() );
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
@@ -918,6 +930,32 @@ void TrackDirectionTool::GetAverageQoverWTrackBody(HitChargeVector &hitChargeVec
     }
 
     averageChargeTrackBody /= nEntries;
+}
+
+//--------------------------------------------------------------------------------------------------------------------------------
+
+void TrackDirectionTool::GetQoverWRange(HitChargeVector &hitChargeVector, float &QoverWRange)
+{
+    //temp vector because I do not want to mess with the sorting of the original vector
+    HitChargeVector tempHitChargeVector;
+
+    for (HitCharge &hitCharge : hitChargeVector)
+        tempHitChargeVector.push_back(hitCharge);
+
+    std::sort(tempHitChargeVector.begin(), tempHitChargeVector.end(), SortHitChargeVectorByChargeOverWidth);
+
+    float minQoverW(1e6), maxQoverW(0.f);
+
+    for (HitCharge &hitCharge : hitChargeVector)
+    {
+        if (hitCharge.GetChargeOverWidth() > maxQoverW)
+            maxQoverW = hitCharge.GetChargeOverWidth();
+
+        if (hitCharge.GetChargeOverWidth() < minQoverW)
+            minQoverW = hitCharge.GetChargeOverWidth();
+    }
+
+    QoverWRange = (maxQoverW - minQoverW);
 }
 
 //--------------------------------------------------------------------------------------------------------------------------------
@@ -1037,7 +1075,7 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
 
         if (nAdded == 0)
         {
-            if (kinkObject.GetOpeningAngle() > 0.1)
+            if (kinkObject.GetOpeningAngle() > 0.05)
                 splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
 
             latestJumpPosition = kinkObjects.at(i).GetLongitudinalPosition();
@@ -1051,7 +1089,7 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
                 latestJumpPosition = kinkObjects.at(i).GetLongitudinalPosition();
                 latestJumpValue = kinkObjects.at(i).GetJumpValue();
 
-                if (kinkObject.GetOpeningAngle() > 0.1)
+                if (kinkObject.GetOpeningAngle() > 0.05)
                 {
                     splitPositions.pop_back();
                     splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
@@ -1063,7 +1101,7 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
                 latestJumpValue = kinkObjects.at(i).GetJumpValue();
                 nAdded++;
 
-                if (kinkObject.GetOpeningAngle() > 0.1)
+                if (kinkObject.GetOpeningAngle() > 0.05)
                     splitPositions.push_back(kinkObjects.at(i).GetLongitudinalPosition());
             }
         }
@@ -1071,7 +1109,7 @@ void TrackDirectionTool::FindKinkSplit(HitChargeVector &hitChargeVector, std::ve
 }
 //--------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions)
+void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpObjects)
 {
     float trackLength(0.f);
     this->GetTrackLength(hitChargeVector, trackLength);
@@ -1164,7 +1202,7 @@ void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std:
 
         if (nAdded == 0)
         {
-            splitPositions.push_back(plateauObjects.at(i).GetLongitudinalPosition());
+            jumpObjects.push_back(plateauObjects.at(i));
             latestJumpPosition = plateauObjects.at(i).GetLongitudinalPosition();
             latestJumpValue = plateauObjects.at(i).GetJumpValue();
             nAdded++;
@@ -1173,14 +1211,14 @@ void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std:
         {
             if ((plateauObject.GetLongitudinalPosition() - latestJumpPosition) < range && plateauObject.GetJumpValue() > latestJumpValue)
             {
-                splitPositions.pop_back();
-                splitPositions.push_back(plateauObjects.at(i).GetLongitudinalPosition());
+                jumpObjects.pop_back();
+                jumpObjects.push_back(plateauObjects.at(i));
                 latestJumpPosition = plateauObjects.at(i).GetLongitudinalPosition();
                 latestJumpValue = plateauObjects.at(i).GetJumpValue();
             }
             else if ((plateauObject.GetLongitudinalPosition() - latestJumpPosition) > range)
             {
-                splitPositions.push_back(plateauObjects.at(i).GetLongitudinalPosition());
+                jumpObjects.push_back(plateauObjects.at(i));
                 latestJumpPosition = plateauObjects.at(i).GetLongitudinalPosition();
                 latestJumpValue = plateauObjects.at(i).GetJumpValue();
                 nAdded++;
@@ -1191,7 +1229,7 @@ void TrackDirectionTool::FindPlateauSplit(HitChargeVector &hitChargeVector, std:
 
 //--------------------------------------------------------------------------------------------------------------------------------
 
-void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::vector<float> &splitPositions)
+void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::vector<JumpObject> &jumpObjects)
 {
     //HitChargeVector binnedHitChargeVector;
     //BinHitChargeVector(hitChargeVector, binnedHitChargeVector, 1.0);
@@ -1241,7 +1279,7 @@ void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::ve
 
         if (nAdded == 0)
         {
-            splitPositions.push_back(normalJumps.at(i).GetLongitudinalPosition());
+            jumpObjects.push_back(normalJumps.at(i));
             latestJumpPosition = normalJumps.at(i).GetLongitudinalPosition();
             latestJumpValue = normalJumps.at(i).GetJumpValue();
             nAdded++;
@@ -1250,14 +1288,14 @@ void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::ve
         {
             if ((jumpObject.GetLongitudinalPosition() - latestJumpPosition) < range && jumpObject.GetJumpValue() > latestJumpValue)
             {
-                splitPositions.pop_back();
-                splitPositions.push_back(normalJumps.at(i).GetLongitudinalPosition());
+                jumpObjects.pop_back();
+                jumpObjects.push_back(normalJumps.at(i));
                 latestJumpPosition = normalJumps.at(i).GetLongitudinalPosition();
                 latestJumpValue = normalJumps.at(i).GetJumpValue();
             }
             else if ((jumpObject.GetLongitudinalPosition() - latestJumpPosition) > range)
             {
-                splitPositions.push_back(normalJumps.at(i).GetLongitudinalPosition());
+                jumpObjects.push_back(normalJumps.at(i));
                 latestJumpPosition = normalJumps.at(i).GetLongitudinalPosition();
                 latestJumpValue = normalJumps.at(i).GetJumpValue();
                 nAdded++;
@@ -1279,7 +1317,7 @@ void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::ve
 
         if (nAdded == 0)
         {
-            splitPositions.push_back(binnedJumps.at(i).GetLongitudinalPosition());
+            jumpObjects.push_back(normalJumps.at(i));
             latestJumpPosition = binnedJumps.at(i).GetLongitudinalPosition();
             latestJumpValue = binnedJumps.at(i).GetJumpValue();
             nAdded++;
@@ -1288,14 +1326,14 @@ void TrackDirectionTool::FindJumpSplit(HitChargeVector &hitChargeVector, std::ve
         {
             if ((jumpObject.GetLongitudinalPosition() - latestJumpPosition) < range && jumpObject.GetJumpValue() > latestJumpValue)
             {
-                splitPositions.pop_back();
-                splitPositions.push_back(binnedJumps.at(i).GetLongitudinalPosition());
+                jumpObjects.pop_back();
+                jumpObjects.push_back(normalJumps.at(i));
                 latestJumpPosition = binnedJumps.at(i).GetLongitudinalPosition();
                 latestJumpValue = binnedJumps.at(i).GetJumpValue();
             }
             else if ((jumpObject.GetLongitudinalPosition() - latestJumpPosition) > range)
             {
-                splitPositions.push_back(binnedJumps.at(i).GetLongitudinalPosition());
+                jumpObjects.push_back(normalJumps.at(i));
                 latestJumpPosition = binnedJumps.at(i).GetLongitudinalPosition();
                 latestJumpValue = binnedJumps.at(i).GetJumpValue();
                 nAdded++;
