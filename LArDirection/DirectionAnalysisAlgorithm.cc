@@ -15,6 +15,7 @@
 #include "larpandoracontent/LArObjects/LArMCParticle.h"
 
 #include "LArSpaceChargeHelper.h"
+#include "LArNewSpaceChargeHelper.h"
 
 using namespace pandora;
 
@@ -81,6 +82,9 @@ StatusCode DirectionAnalysisAlgorithm::Run()
     //pandora::CaloHitVector hitVector(pCaloHitList->begin(), pCaloHitList->end());
     //for (auto pCaloHit : hitVector)
     //    std::cout << "Hit position: (" << pCaloHit->GetPositionVector().GetX() << "," << pCaloHit->GetPositionVector().GetY() << "," << pCaloHit->GetPositionVector().GetZ() << ")" << std::endl;
+    
+    LArNewSpaceChargeHelper::Configure("/usera/jjd49/lardirection_pandora/PandoraPFA/LArDirectionContent-origin/master/LArDirection/SCEoffsets_MicroBooNE_E273.root");
+    //LArNewSpaceChargeHelper::Configure("/usera/jjd49/lardirection_pandora/PandoraPFA/LArDirectionContent-origin/master/LArDirection/SCEoffsets_MicroBooNE_E273_New.root");
 
     this->WritePfoInformation(pfoVector);
     this->WriteClusterAndHitInformation(clusterVector);
@@ -146,7 +150,8 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
     //Reweight vertex scores so that the lowest is 1 and the highest is 5
     this->NormaliseVertexScores(vertexVector);
 
-    float vertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector));
+    float vertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector, false));
+    float sccVertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector, true));
     float minVertexDR(this->GetMinVertexDR(pMCParticleList, pCaloHitList, vertexVector));
 
     float longestPfoLength(0.f);
@@ -186,7 +191,8 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
         pVertex->SetScore(newScore);
     }
 
-    float afterDirectionVertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVectorReweighted));
+    float afterDirectionVertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVectorReweighted, false));
+    float sccAfterDirectionVertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVectorReweighted, true));
 
     if (m_drawFit)
     {
@@ -195,8 +201,10 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
     }
 
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "VertexDR", vertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "SCCVertexDR", sccVertexDR));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "MinVertexDR", minVertexDR));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "AfterDirectionVertexDR", afterDirectionVertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "SCCAfterDirectionVertexDR", sccAfterDirectionVertexDR));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "FileIdentifier", m_fileIdentifier));
     PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), vertexTreeName.c_str(), "EventNumber", m_eventNumber));
     PANDORA_MONITORING_API(FillTree(this->GetPandora(), vertexTreeName.c_str()));
@@ -206,6 +214,70 @@ void DirectionAnalysisAlgorithm::WriteVertexInformation(const pandora::MCParticl
 
 void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector, pandora::PfoVector &pfoVector)
 {
+    const Cluster* const pTargetCluster(this->GetLongestWCluster(pfoVector)); 
+
+    if (pTargetCluster == NULL)
+        return;
+
+    TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pTargetCluster);
+    CartesianVector vertexPosition(this->Get3DSplitPosition(fitResult, pCaloHitList));
+
+    CartesianVector correctedPosition(LArNewSpaceChargeHelper::GetSpaceChargeCorrectedPosition(vertexPosition));
+    CartesianVector positionOffset(LArNewSpaceChargeHelper::GetPositionOffset(vertexPosition));
+
+    //const Vertex *pNewVertex(this->CreateVertex(vertexPosition));
+
+    CartesianVector trueVertexPosition(0.f, 0.f, 0.f);
+
+    for (auto pMCParticle : *pMCParticleList)
+    {   
+        if (pMCParticle->GetParticleId() == 13 && LArMCParticleHelper::IsPrimary(pMCParticle) && pMCParticle->GetVertex().GetY() != 0)
+            trueVertexPosition = pMCParticle->GetVertex();
+    }
+
+    float vertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector, false));
+    float sccVertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector, true));
+
+    float afterSplitVertexDR(fitResult.GetSplitObject().GetSplitApplied() ? (trueVertexPosition - vertexPosition).GetMagnitude() : vertexDR);
+    float sccAfterSplitVertexDR(fitResult.GetSplitObject().GetSplitApplied() ? (trueVertexPosition - correctedPosition).GetMagnitude() : sccVertexDR);
+
+    bool isClusterTwoParticles(false);
+    this->IsClusterTwoParticles(pTargetCluster, fitResult.GetForwardsFitCharges(), fitResult.GetBackwardsFitCharges(), isClusterTwoParticles);
+    int mcIsClusterTwoParticles(isClusterTwoParticles? 1 : 0);
+
+    float vertexDX((trueVertexPosition - correctedPosition).GetX()), vertexDY((trueVertexPosition - correctedPosition).GetY()), vertexDZ((trueVertexPosition - correctedPosition).GetZ()); 
+    float sccVertexDRChangeX(std::abs((trueVertexPosition - correctedPosition).GetX()) - std::abs((trueVertexPosition - vertexPosition).GetX())), sccVertexDRChangeY(std::abs((trueVertexPosition - correctedPosition).GetY()) - std::abs((trueVertexPosition - vertexPosition).GetY())), sccVertexDRChangeZ(std::abs((trueVertexPosition - correctedPosition).GetZ()) - std::abs((trueVertexPosition - vertexPosition).GetZ()));
+
+    std::cout << "Before split vertex DR: " << vertexDR << std::endl;
+    std::cout << "SCC before split vertex DR: " << sccVertexDR << std::endl;
+    
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "MCIsClusterTwoParticles", mcIsClusterTwoParticles));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexDR", vertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SCCVertexDR", sccVertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "AfterSplitVertexDR", afterSplitVertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SCCAfterSplitVertexDR", sccAfterSplitVertexDR));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexX", vertexPosition.GetX()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexY", vertexPosition.GetY()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexZ", vertexPosition.GetZ()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexDX", vertexDX));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexDY", vertexDY));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexDZ", vertexDZ));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "PositionOffsetX", positionOffset.GetX()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "PositionOffsetY", positionOffset.GetY()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "PositionOffsetZ", positionOffset.GetZ()));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SCCVertexDRChangeX", sccVertexDRChangeX));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SCCVertexDRChangeY", sccVertexDRChangeY));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SCCVertexDRChangeZ", sccVertexDRChangeZ));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "FileIdentifier", m_fileIdentifier));
+    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "EventNumber", m_eventNumber));
+    PANDORA_MONITORING_API(FillTree(this->GetPandora(), splittingTreeName.c_str()));
+}
+
+//------------------------------------------------------------------------------------------------------------------------------------------
+
+const Cluster* DirectionAnalysisAlgorithm::GetLongestWCluster(pandora::PfoVector &pfoVector)
+{
+    //Get longest cluster from vector of PFOs
     float longestClusterLength(0.f);
     pandora::ClusterVector targetClusterVector; 
     pandora::PfoVector targetPfoVector; 
@@ -235,18 +307,17 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
     }
 
     if (targetClusterVector.size() == 0 || targetPfoVector.size() == 0)
-        return;
+        return NULL;
 
     const Cluster* const pTargetCluster(*(targetClusterVector.begin()));
-    //const ParticleFlowObject *const pTargetPfo(*(targetPfoVector.begin()));
+    return pTargetCluster;
+}
 
-    TrackDirectionTool::DirectionFitObject fitResult = m_pTrackDirectionTool->GetClusterDirection(pTargetCluster);
+//------------------------------------------------------------------------------------------------------------------------------------------
 
-    float splitPosition(fitResult.GetSplitObject().GetSplitPosition());
-
-    //const pandora::CaloHit* leftHit(fitResult.GetForwardsFitCharges().back().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().front().GetLongitudinalPosition() < fitResult.GetForwardsFitCharges().front().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().back().GetLongitudinalPosition() ? fitResult.GetForwardsFitCharges().back().GetCaloHit() : fitResult.GetForwardsFitCharges().front().GetCaloHit());
-    //const pandora::CaloHit* rightHit(fitResult.GetForwardsFitCharges().back().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().front().GetLongitudinalPosition() < fitResult.GetForwardsFitCharges().front().GetLongitudinalPosition() - fitResult.GetBackwardsFitCharges().back().GetLongitudinalPosition() ? fitResult.GetForwardsFitCharges().front().GetCaloHit() : fitResult.GetForwardsFitCharges().back().GetCaloHit());
-
+pandora::CartesianVector DirectionAnalysisAlgorithm::Get3DSplitPosition(TrackDirectionTool::DirectionFitObject &fitResult, const pandora::CaloHitList *pCaloHitList)
+{
+    //Get target X and Z from split hit collections
     const pandora::CaloHit* leftHit(((fitResult.GetBackwardsFitCharges().back())).GetCaloHit());
     const pandora::CaloHit* rightHit(((fitResult.GetForwardsFitCharges().front())).GetCaloHit());
 
@@ -254,9 +325,6 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
     const float lowerZ(leftHit->GetPositionVector().GetZ() < rightHit->GetPositionVector().GetZ() ? leftHit->GetPositionVector().GetZ() : rightHit->GetPositionVector().GetZ());
     const float upperZ(leftHit->GetPositionVector().GetZ() > rightHit->GetPositionVector().GetZ() ? leftHit->GetPositionVector().GetZ() : rightHit->GetPositionVector().GetZ());
 
-    std::cout << "lowerZ: " << lowerZ << std::endl;
-    std::cout << "upperZ: " << upperZ << std::endl;
-    
     //get closest W calohit
     float closestDistance(1e6);
     const pandora::CaloHit* pTargetCaloHitW(NULL);
@@ -270,42 +338,6 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
         }
     }
 
-    //for (auto pCaloHit : *pCaloHitList)
-
-    /*
-    //loop over clusters in pfo to find matching hit in U or V
-    ClusterList ClustersV;
-    LArPfoHelper::GetClusters(pTargetPfo, TPC_VIEW_V, ClustersV);
-    const pandora::CaloHit* pTargetCaloHitV(NULL);
-    float closestHitDistance(1e6);
-
-    for (auto pClusterV : ClustersV)
-    {
-        OrderedCaloHitList orderedCaloHitList(pClusterV->GetOrderedCaloHitList());
-        CaloHitList caloHitList;
-        orderedCaloHitList.FillCaloHitList(caloHitList);
-
-        for (auto pCaloHitV : caloHitList)
-        {
-            float deltaX((pCaloHitV->GetPositionVector().GetX() != 0 && pTargetCaloHitW->GetPositionVector().GetX() != 0) ? (std::abs(pCaloHitV->GetPositionVector().GetX() - pTargetCaloHitW->GetPositionVector().GetX())) : 0);
-            float deltaY((pCaloHitV->GetPositionVector().GetY() != 0 && pTargetCaloHitW->GetPositionVector().GetY() != 0) ? (std::abs(pCaloHitV->GetPositionVector().GetY() - pTargetCaloHitW->GetPositionVector().GetY())) : 0);
-            float deltaZ((pCaloHitV->GetPositionVector().GetZ() != 0 && pTargetCaloHitW->GetPositionVector().GetZ() != 0) ? (std::abs(pCaloHitV->GetPositionVector().GetZ() - pTargetCaloHitW->GetPositionVector().GetZ())) : 0);
-
-            float distance(std::sqrt((deltaX*deltaX) + (deltaY*deltaY) + (deltaZ*deltaZ)));
-
-            if (distance < closestHitDistance)
-            {
-                closestHitDistance = distance;
-                pTargetCaloHitV = pCaloHitV;
-            }
-        }
-    }
-
-    CartesianVector vertexPosition(0.f, 0.f, 0.f);
-    float positionChiSquared(0.f);
-    LArGeometryHelper::MergeTwoPositions3D(this->GetPandora(), TPC_VIEW_V, TPC_VIEW_W, pTargetCaloHitV->GetPositionVector(), pTargetCaloHitW->GetPositionVector(), vertexPosition, positionChiSquared);
-    */
-
     //Now find the closest 3D hit
     pandora::CaloHitVector hitVector(pCaloHitList->begin(), pCaloHitList->end());
     const pandora::CaloHit* pTarget3DCaloHit(NULL);
@@ -313,14 +345,6 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
 
     for (auto pCaloHit : hitVector)
     {
-        /*
-        if ((pCaloHit->GetPositionVector() - vertexPosition).GetMagnitude() < closestDistance3D)
-        {
-            closestDistance3D = (pCaloHit->GetPositionVector() - vertexPosition).GetMagnitude();
-            pTarget3DCaloHit = pCaloHit;
-        }
-        */
-
         if (pCaloHit->GetPositionVector().GetX() == 0 || pCaloHit->GetPositionVector().GetY() == 0 || pCaloHit->GetPositionVector().GetZ() == 0)
             continue;
     
@@ -336,77 +360,27 @@ void DirectionAnalysisAlgorithm::WriteSplittingInformation(const pandora::MCPart
         }
     }
 
-    //Test spacecharge helper
-    LArSpaceChargeHelper::Configure("SCEoffsets_MicroBooNE_E273.root");
-    CartesianVector vertexPosition(pTarget3DCaloHit->GetPositionVector());
-    
-    std::cout << "Original vertex position: (" << vertexPosition.GetX() << "," << vertexPosition.GetY() << "," << vertexPosition.GetZ() << ")" << std::endl;
+    return pTarget3DCaloHit->GetPositionVector();
+}
 
-    CartesianVector correctedPosition = LArSpaceChargeHelper::GetSpaceChargeCorrectedPosition(vertexPosition);
+//------------------------------------------------------------------------------------------------------------------------------------------
 
-    std::cout << "Spacecharge corrected vertex position: (" << correctedPosition.GetX() << "," << correctedPosition.GetY() << "," << correctedPosition.GetZ() << ")" << std::endl;
-
+const Vertex* DirectionAnalysisAlgorithm::CreateVertex(CartesianVector &vertexPosition)
+{
     //Create vertex
     PandoraContentApi::Vertex::Parameters parameters;
-    parameters.m_position = pTarget3DCaloHit->GetPositionVector();
+    parameters.m_position = vertexPosition;
     parameters.m_vertexLabel = VERTEX_INTERACTION; 
     parameters.m_vertexType = VERTEX_3D; 
 
     const Vertex *pNewVertex(nullptr);
     PANDORA_THROW_RESULT_IF(STATUS_CODE_SUCCESS, !=, PandoraContentApi::Vertex::Create(*this, parameters, pNewVertex));
-
-    float vertexDR(this->GetVertexDR(pMCParticleList, pCaloHitList, vertexVector));
-
-    CartesianVector trueVertexPosition(0.f, 0.f, 0.f);
-
-    for (auto pMCParticle : *pMCParticleList)
-    {   
-        if (pMCParticle->GetParticleId() == 13 && LArMCParticleHelper::IsPrimary(pMCParticle) && pMCParticle->GetVertex().GetY() != 0)
-            trueVertexPosition = pMCParticle->GetVertex();
-    }
-
-    /*
-    for (auto hitCharge : fitResult.GetBackwardsFitCharges())
-    {
-        std::cout << "L: " << hitCharge.GetLongitudinalPosition() << std::endl;
-        std::cout << "Z: " << hitCharge.GetCaloHit()->GetPositionVector().GetZ() << std::endl;
-        std::cout << "------------" << std::endl;
-    }
-
-    for (auto hitCharge : fitResult.GetForwardsFitCharges())
-    {
-        std::cout << "L: " << hitCharge.GetLongitudinalPosition() << std::endl;
-        std::cout << "Z: " << hitCharge.GetCaloHit()->GetPositionVector().GetZ() << std::endl;
-        std::cout << "------------" << std::endl;
-    }
-    */
-
-    std::cout << "Split position: " << splitPosition << std::endl;
-    std::cout << "True vertex position: (" << trueVertexPosition.GetX() << "," << trueVertexPosition.GetY() << "," << trueVertexPosition.GetZ() << ")" << std::endl;
-    std::cout << "New vertex position: (" << pTarget3DCaloHit->GetPositionVector().GetX() << "," << pTarget3DCaloHit->GetPositionVector().GetY() << "," << pTarget3DCaloHit->GetPositionVector().GetZ() << ")" << std::endl;
-
-    //bool extremeChange(std::abs((trueVertexPosition - pNewVertex->GetPosition()).GetMagnitude() - vertexDR) >= 0.9 * LArClusterHelper::GetLength(pTargetCluster));
-    float afterSplitVertexDR(fitResult.GetSplitObject().GetSplitApplied() ? (trueVertexPosition - pNewVertex->GetPosition()).GetMagnitude() : vertexDR);
-
-    bool isClusterTwoParticles(false);
-    this->IsClusterTwoParticles(pTargetCluster, fitResult.GetForwardsFitCharges(), fitResult.GetBackwardsFitCharges(), isClusterTwoParticles);
-    int mcIsClusterTwoParticles(isClusterTwoParticles? 1 : 0);
-
-    std::cout << "Before split vertex DR: " << vertexDR << std::endl;
-    std::cout << "After split vertex DR: " << afterSplitVertexDR << std::endl;
-    
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "MCIsClusterTwoParticles", mcIsClusterTwoParticles));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "SplitPosition", splitPosition));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "VertexDR", vertexDR));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "AfterSplitVertexDR", afterSplitVertexDR));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "FileIdentifier", m_fileIdentifier));
-    PANDORA_MONITORING_API(SetTreeVariable(this->GetPandora(), splittingTreeName.c_str(), "EventNumber", m_eventNumber));
-    PANDORA_MONITORING_API(FillTree(this->GetPandora(), splittingTreeName.c_str()));
+    return pNewVertex;
 }
 
 //------------------------------------------------------------------------------------------------------------------------------------------
 
-float DirectionAnalysisAlgorithm::GetVertexDR(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector)
+float DirectionAnalysisAlgorithm::GetVertexDR(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector, bool enableSpaceChargeCorrection)
 {
     CartesianVector trueVertexPosition(0.f, 0.f, 0.f);
 
@@ -421,14 +395,26 @@ float DirectionAnalysisAlgorithm::GetVertexDR(const pandora::MCParticleList *pMC
     LArMCParticleHelper::SelectReconstructableMCParticles(pMCParticleList, pCaloHitList, parameters, LArMCParticleHelper::IsBeamNeutrinoFinalState, selectedMCParticles);
 
     float maxScore(-1000.f), vertexDR(0.f);
+    CartesianVector bestposition(0.f, 0.f, 0.f), sccBestPosition(0.f, 0.f, 0.f);
     for (const pandora::Vertex *const pVertex : vertexVector)
     {
         if (pVertex->GetScore() > maxScore)
         {
             maxScore = pVertex->GetScore();
-            vertexDR = (pVertex->GetPosition() - trueVertexPosition).GetMagnitude();
+            CartesianVector vertexCandidatePosition(pVertex->GetPosition());
+            
+            if (enableSpaceChargeCorrection)
+                vertexCandidatePosition = LArNewSpaceChargeHelper::GetSpaceChargeCorrectedPosition(vertexCandidatePosition);
+
+            vertexDR = (vertexCandidatePosition - trueVertexPosition).GetMagnitude();
+            bestposition = pVertex->GetPosition();
         }
     }
+
+    sccBestPosition = LArNewSpaceChargeHelper::GetSpaceChargeCorrectedPosition(bestposition);
+
+    //std::cout << "Best reco vertex position: (" << bestposition.GetX() << "," << bestposition.GetY() << "," << bestposition.GetZ() << ")" << std::endl;
+    //std::cout << "SCC best reco vertex position: (" << sccBestPosition.GetX() << "," << sccBestPosition.GetY() << "," << sccBestPosition.GetZ() << ")" << std::endl;
 
     return vertexDR;
 }
