@@ -14,16 +14,21 @@
 
 #include "LArDirection/ExampleDirectionAlgorithm.h"
 #include "LArDirection/DirectionAnalysisAlgorithm.h"
+#include "LArDirection/DirectionClusterSplittingAlgorithm.h"
+
 #include "LArDirection/TrackDirectionTool.h"
+#include "LArDirection/DirectionFlowProbabilityTool.h"
 
 #include "LArDirectionContent.h"
 
 #define LAR_DIRECTION_ALGORITHM_LIST(d)                                                                                                   \
     d("LArExampleDirection",                  ExampleDirectionAlgorithm)                                                                  \
-    d("LArDirectionAnalysis",                  DirectionAnalysisAlgorithm)
+    d("LArDirectionAnalysis",                 DirectionAnalysisAlgorithm)                                                                 \
+    d("LArDirectionClusterSplitting",         DirectionClusterSplittingAlgorithm)
 
 #define LAR_DIRECTION_ALGORITHM_TOOL_LIST(d)                                                                                              \
-    d("LArDirectionTool",           TrackDirectionTool)
+    d("LArTrackDirectionTool",                TrackDirectionTool)                                                                         \
+    d("LArDirectionFlowProbabilityTool",      DirectionFlowProbabilityTool)
 
 #define FACTORY Factory
 
@@ -33,7 +38,7 @@
 namespace lar_content
 {
 
-#define LAR_DIRECTION_CONTENT_CREATE_ALGORITHM_FACTORY(a, b)                                                                              \
+#define LAR_DIRECTION_CONTENT_CREATE_ALGORITHM_FACTORY(a, b)                                                                    \
 class b##FACTORY : public pandora::AlgorithmFactory                                                                             \
 {                                                                                                                               \
 public:                                                                                                                         \
