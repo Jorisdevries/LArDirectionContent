@@ -36,15 +36,9 @@ public:
 private:
     pandora::StatusCode     Run();
 
-    bool                    CheckEventType(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::PfoVector &pfoVector, int targetNumberMuons, int targetNumberProtons, int targetNumberPfos);
-    void                    WriteVertexInformation(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector, pandora::PfoVector &pfoVector);
-    void                    WriteSplittingInformation(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector, pandora::PfoVector &pfoVector);
-    const pandora::Cluster* GetLongestWCluster(pandora::PfoVector &pfoVector);
-    pandora::CartesianVector Get3DSplitPosition(TrackDirectionTool::DirectionFitObject &fitResult, const pandora::CaloHitList *pCaloHitList);
-    const pandora::Vertex*  CreateVertex(pandora::CartesianVector &vertexPosition);
-    float                   GetVertexDR(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector, bool enableSpaceChargeCorrection);
-    float                   GetMinVertexDR(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::VertexVector &vertexVector);
-    void                    NormaliseVertexScores(pandora::VertexVector &vertexVector);
+    void                    CheckEventType(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, pandora::PfoVector &pfoVector, int &targetNumberMuons, int &targetNumberProtons, int &nOthers, int &targetNumberPfos);
+    void                    WriteVertexInformation(const pandora::MCParticleList *pMCParticleList, const pandora::CaloHitList *pCaloHitList, const pandora::Vertex* const pVertex, pandora::PfoVector &pfoVector);
+    float                   GetVertexDR(const pandora::MCParticleList *pMCParticleList, const pandora::Vertex* const pVertex, bool enableSpaceChargeCorrection);
     void                    WritePfoInformation(pandora::PfoVector &pfoVector);
     bool                    IsGoodPfo(const pandora::ParticleFlowObject* pPfo);
     void                    WriteClusterAndHitInformation(pandora::ClusterVector &clusterVector);
